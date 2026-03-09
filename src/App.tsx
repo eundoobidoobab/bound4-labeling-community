@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import ProjectLayout from "./components/ProjectLayout";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
 import BoardPage from "./pages/BoardPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -25,10 +26,17 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
             <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-            <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
-            <Route path="/projects/:id/boards/:boardId" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
-            <Route path="/projects/:id/dm" element={<ProtectedRoute><div className="p-8 text-center text-muted-foreground">DM 기능은 다음 단계에서 구현됩니다</div></ProtectedRoute>} />
-            <Route path="/projects/:id/admin/allocation" element={<ProtectedRoute><div className="p-8 text-center text-muted-foreground">배분 관리는 다음 단계에서 구현됩니다</div></ProtectedRoute>} />
+
+            {/* Project routes with sidebar layout */}
+            <Route path="/projects/:id" element={<ProtectedRoute><ProjectLayout /></ProtectedRoute>}>
+              <Route index element={<ProjectDetailPage />} />
+              <Route path="boards/:boardId" element={<BoardPage />} />
+              <Route path="dm" element={<div className="p-8 text-center text-muted-foreground">DM 기능은 다음 단계에서 구현됩니다</div>} />
+              <Route path="members" element={<div className="p-8 text-center text-muted-foreground">팀 멤버 관리는 다음 단계에서 구현됩니다</div>} />
+              <Route path="settings" element={<div className="p-8 text-center text-muted-foreground">프로젝트 설정은 다음 단계에서 구현됩니다</div>} />
+              <Route path="admin/allocation" element={<div className="p-8 text-center text-muted-foreground">배분 관리는 다음 단계에서 구현됩니다</div>} />
+            </Route>
+
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
