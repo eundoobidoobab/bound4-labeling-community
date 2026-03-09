@@ -463,6 +463,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          is_pinned: boolean
           status: Database["public"]["Enums"]["post_status"]
           title: string
         }
@@ -472,6 +473,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          is_pinned?: boolean
           status?: Database["public"]["Enums"]["post_status"]
           title: string
         }
@@ -481,6 +483,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          is_pinned?: boolean
           status?: Database["public"]["Enums"]["post_status"]
           title?: string
         }
