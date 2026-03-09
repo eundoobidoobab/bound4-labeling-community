@@ -61,6 +61,7 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
+  const isProjectHome = location.pathname === `/projects/${id}`;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -80,7 +81,7 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
           )}
         </div>
 
-        {/* Board navigation */}
+        {/* Board navigation - Notice is project home */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">
             게시판
@@ -89,14 +90,20 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
             <SidebarMenu>
               {boards.map((board) => {
                 const Icon = boardIcons[board.type] || MessageSquare;
-                const boardPath = `/projects/${id}/boards/${board.id}`;
-                const isActive = location.pathname === boardPath;
+                // Notice board links to project home
+                const boardPath = board.type === 'NOTICE'
+                  ? `/projects/${id}`
+                  : `/projects/${id}/boards/${board.id}`;
+                const isActive = board.type === 'NOTICE'
+                  ? isProjectHome
+                  : location.pathname === boardPath;
 
                 return (
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <NavLink
                         to={boardPath}
+                        end={board.type === 'NOTICE'}
                         className="hover:bg-muted/50"
                         activeClassName="bg-primary/10 text-primary font-medium"
                       >
