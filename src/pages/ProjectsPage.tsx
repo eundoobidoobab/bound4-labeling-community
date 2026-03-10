@@ -604,6 +604,31 @@ export default function ProjectsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete account confirmation */}
+      <AlertDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>회원 탈퇴</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAdmin
+                ? '정말 탈퇴하시겠습니까? 관리자 계정은 동일 이메일로 다시 가입할 수 있습니다.'
+                : '정말 탈퇴하시겠습니까? 탈퇴 후 재가입 시 새로운 회원으로 처리되며, 기존 데이터는 복구되지 않습니다.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              탈퇴하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
