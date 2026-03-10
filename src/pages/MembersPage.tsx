@@ -277,13 +277,46 @@ export default function MembersPage() {
     })),
   ];
 
-  const filteredMembers = roleFilter === 'all'
-    ? allMembers
-    : roleFilter === 'admin'
-      ? allMembers.filter(m => m.isAdmin)
-      : allMembers.filter(m => !m.isAdmin);
+  // Workers only see admins
+  const visibleMembers = isCurrentUserAdmin ? allMembers : allMembers.filter(m => m.isAdmin);
 
-  const isCurrentUserAdmin = admins.some(a => a.admin_id === user?.id);
+  const filteredMembers = isCurrentUserAdmin
+    ? (roleFilter === 'all'
+        ? visibleMembers
+        : roleFilter === 'admin'
+          ? visibleMembers.filter(m => m.isAdmin)
+          : visibleMembers.filter(m => !m.isAdmin))
+    : visibleMembers;
+
+  const handleStartDm = async (adminId: string) => {
+    if (!projectId || !user) return;
+    // Check for existing thread
+    const { data: existing } = await supabase
+      .from('dm_threads')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('admin_id', adminId)
+      .eq('worker_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      navigate(`/projects/${projectId}/dm?thread=${existing.id}`);
+      return;
+    }
+
+    // Create new thread
+    const { data: newThread, error } = await supabase
+      .from('dm_threads')
+      .insert({ project_id: projectId, admin_id: adminId, worker_id: user.id })
+      .select('id')
+      .single();
+
+    if (error) {
+      toast({ title: 'DM 생성 실패', description: error.message, variant: 'destructive' });
+    } else if (newThread) {
+      navigate(`/projects/${projectId}/dm?thread=${newThread.id}`);
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
