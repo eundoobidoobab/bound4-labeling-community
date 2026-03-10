@@ -46,6 +46,44 @@ Deno.serve(async (req) => {
     await adminClient.from('comments').delete().eq('author_id', userId);
     await adminClient.from('allocation_applications').delete().eq('worker_id', userId);
     await adminClient.from('allocation_assignments').delete().eq('worker_id', userId);
+
+    // Guide versions: delete dependents first, then versions, then documents
+    const { data: guideVersions } = await adminClient.from('guide_versions').select('id, document_id').eq('created_by', userId);
+    if (guideVersions && guideVersions.length > 0) {
+      const versionIds = guideVersions.map(v => v.id);
+      await adminClient.from('guide_acknowledgements').delete().in('guide_version_id', versionIds);
+      await adminClient.from('project_latest_guide').delete().in('guide_version_id', versionIds);
+      await adminClient.from('guide_versions').delete().eq('created_by', userId);
+    }
+
+    // Notices created by user: clean dependents then notices
+    const { data: userNotices } = await adminClient.from('notices').select('id').eq('created_by', userId);
+    if (userNotices && userNotices.length > 0) {
+      const noticeIds = userNotices.map(n => n.id);
+      await adminClient.from('notice_attachments').delete().in('notice_id', noticeIds);
+      await adminClient.from('notice_comments').delete().in('notice_id', noticeIds);
+      await adminClient.from('notice_reads').delete().in('notice_id', noticeIds);
+      await adminClient.from('notices').delete().eq('created_by', userId);
+    }
+
+    // Posts created by user: clean dependents then posts
+    const { data: userPosts } = await adminClient.from('posts').select('id').eq('author_id', userId);
+    if (userPosts && userPosts.length > 0) {
+      const postIds = userPosts.map(p => p.id);
+      await adminClient.from('post_attachments').delete().in('post_id', postIds);
+      await adminClient.from('comments').delete().in('post_id', postIds);
+      await adminClient.from('posts').delete().eq('author_id', userId);
+    }
+
+    // Allocation calls created by user
+    const { data: userCalls } = await adminClient.from('allocation_calls').select('id').eq('created_by', userId);
+    if (userCalls && userCalls.length > 0) {
+      const callIds = userCalls.map(c => c.id);
+      await adminClient.from('allocation_applications').delete().in('call_id', callIds);
+      await adminClient.from('allocation_assignments').delete().in('call_id', callIds);
+      await adminClient.from('allocation_calls').delete().eq('created_by', userId);
+    }
+
     await adminClient.from('project_admins').delete().eq('admin_id', userId);
     await adminClient.from('project_memberships').delete().eq('worker_id', userId);
 
