@@ -59,6 +59,8 @@ export default function ProjectsPage() {
   const [joinDialogProject, setJoinDialogProject] = useState<Project | null>(null);
   const [joinRole, setJoinRole] = useState('');
   const [joining, setJoining] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchProjects = async () => {
     setLoading(true);
