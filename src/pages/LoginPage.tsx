@@ -34,7 +34,7 @@ export default function LoginPage() {
     const { error } = await signIn(email, password);
     setIsLoading(false);
     if (error) {
-      if (error.message === 'EMAIL_NOT_CONFIRMED') {
+      if (error.message === 'Email not confirmed') {
         toast({ title: '이메일 인증이 필요합니다', description: '가입 시 발송된 인증 메일을 확인해주세요.', variant: 'destructive' });
       } else {
         toast({ title: '로그인 실패', description: '이메일 또는 비밀번호를 확인해주세요.', variant: 'destructive' });
