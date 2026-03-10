@@ -59,8 +59,14 @@ export default function ProjectsPage() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    const items = (data || []) as Project[];
-    if (!error) setProjects(items);
+    let items = (data || []) as Project[];
+    if (!error) {
+      // Workers only see ACTIVE projects
+      if (!hasRole('admin')) {
+        items = items.filter(p => p.status === 'ACTIVE');
+      }
+      setProjects(items);
+    }
 
     // Fetch member counts
     if (items.length > 0) {
