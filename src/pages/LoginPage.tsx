@@ -135,7 +135,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={mode === 'login' ? handleLogin : handleSignUp} className="space-y-4">
+            <form onSubmit={mode === 'login' ? handleLogin : handleSignUp} className="space-y-4" autoComplete={mode === 'signup' ? 'off' : 'on'}>
               {mode === 'signup' && (
                 <div className="space-y-2">
                   <Label htmlFor="displayName">이름 (실명)</Label>
@@ -146,6 +146,7 @@ export default function LoginPage() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     required
+                    autoComplete="off"
                   />
                 </div>
               )}
@@ -158,6 +159,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete={mode === 'login' ? 'username' : 'off'}
                 />
               </div>
               <div className="space-y-2">
@@ -170,6 +172,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={mode === 'signup' ? 6 : undefined}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 />
               </div>
               {mode === 'signup' && (
@@ -183,6 +186,7 @@ export default function LoginPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={6}
+                    autoComplete="new-password"
                     className={passwordsMismatch ? 'border-destructive focus-visible:ring-destructive' : passwordsMatch ? 'border-primary focus-visible:ring-primary' : ''}
                   />
                   {passwordsMismatch && (
