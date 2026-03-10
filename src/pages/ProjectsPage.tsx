@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive, RotateCcw } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Archive, RotateCcw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,13 @@ export default function ProjectsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Admin join flow
+  const isAdmin = role === 'admin';
+  const [joinedProjectIds, setJoinedProjectIds] = useState<Set<string>>(new Set());
+  const [joinDialogProject, setJoinDialogProject] = useState<Project | null>(null);
+  const [joinRole, setJoinRole] = useState('');
+  const [joining, setJoining] = useState(false);
+
   const fetchProjects = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -61,7 +69,6 @@ export default function ProjectsPage() {
 
     let items = (data || []) as Project[];
     if (!error) {
-      // Workers only see ACTIVE projects
       if (role !== 'admin') {
         items = items.filter(p => p.status === 'ACTIVE');
       }
@@ -84,6 +91,14 @@ export default function ProjectsPage() {
         countMap[id] = memberUserIds.size;
       });
       setMemberCounts(countMap);
+
+      // Track which projects this admin has joined
+      if (isAdmin && user) {
+        const myAdminProjects = new Set(
+          (adminsRes.data || []).filter((r: any) => r.admin_id === user.id).map((r: any) => r.project_id)
+        );
+        setJoinedProjectIds(myAdminProjects);
+      }
     }
 
     // Fetch pending invitations for current user's email
@@ -98,7 +113,6 @@ export default function ProjectsPage() {
       .gt('expires_at', new Date().toISOString()) : { data: null };
 
     if (invData && invData.length > 0) {
-      // Fetch project names for invitations
       const projectIds = [...new Set(invData.map((inv: any) => inv.project_id))];
       const { data: projData } = await supabase.from('projects').select('id, name').in('id', projectIds);
       const projMap: Record<string, string> = {};
@@ -161,6 +175,7 @@ export default function ProjectsPage() {
     toast({ title: '초대를 거절했습니다' });
     fetchProjects();
   };
+
   const openEditDialog = (project: Project, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditProject(project);
@@ -208,6 +223,110 @@ export default function ProjectsPage() {
       toast({ title: '프로젝트가 다시 활성화되었습니다' });
       fetchProjects();
     }
+  };
+
+  const handleProjectClick = (project: Project) => {
+    // Admin who hasn't joined → show join dialog
+    if (isAdmin && !joinedProjectIds.has(project.id)) {
+      setJoinDialogProject(project);
+      setJoinRole('');
+      return;
+    }
+    navigate(`/projects/${project.id}`);
+  };
+
+  const handleJoinProject = async () => {
+    if (!joinDialogProject || !user) return;
+    setJoining(true);
+    const { error } = await supabase.from('project_admins').insert({
+      project_id: joinDialogProject.id,
+      admin_id: user.id,
+      custom_role: joinRole.trim() || null,
+    });
+    setJoining(false);
+    if (error) {
+      toast({ title: '참여 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트에 참여했습니다' });
+      setJoinDialogProject(null);
+      navigate(`/projects/${joinDialogProject.id}`);
+      fetchProjects();
+    }
+  };
+
+  const renderProjectCard = (project: Project, i: number, isArchived = false) => {
+    const isJoined = joinedProjectIds.has(project.id);
+    return (
+      <motion.div
+        key={project.id}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: i * 0.05 }}
+      >
+        <Card
+          className={`cursor-pointer transition-shadow hover:shadow-md ${isArchived ? 'opacity-70' : ''}`}
+          onClick={() => handleProjectClick(project)}
+        >
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <CardTitle className="text-base truncate">{project.name}</CardTitle>
+                {isAdmin && !isJoined && (
+                  <Badge variant="outline" className="text-xs shrink-0">미참여</Badge>
+                )}
+                {isArchived && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">보관됨</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
+                        <Pencil className="mr-2 h-4 w-4" /> 수정
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {isArchived ? (
+                        <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
+                          <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                        >
+                          <Archive className="mr-2 h-4 w-4" /> 보관
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {project.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+            )}
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {new Date(project.created_at).toLocaleDateString('ko-KR')}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                {memberCounts[project.id] || 0}명
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
   };
 
   return (
@@ -258,18 +377,10 @@ export default function ProjectsPage() {
                         </p>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeclineInvitation(inv.id)}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => handleDeclineInvitation(inv.id)}>
                           거절
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAcceptInvitation(inv.id)}
-                          disabled={acceptingId === inv.id}
-                        >
+                        <Button size="sm" onClick={() => handleAcceptInvitation(inv.id)} disabled={acceptingId === inv.id}>
                           {acceptingId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '수락'}
                         </Button>
                       </div>
@@ -283,7 +394,7 @@ export default function ProjectsPage() {
 
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">프로젝트</h2>
-          {role === 'admin' && (
+          {isAdmin && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -347,7 +458,7 @@ export default function ProjectsPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
                   <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
                   <p className="text-muted-foreground">
-                    {role === 'admin' ? '프로젝트를 생성해주세요' : '참여 중인 프로젝트가 없습니다'}
+                    {isAdmin ? '프로젝트를 생성해주세요' : '참여 중인 프로젝트가 없습니다'}
                   </p>
                 </div>
               ) : (
@@ -360,126 +471,18 @@ export default function ProjectsPage() {
                   )}
                   {activeProjects.length > 0 && (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {activeProjects.map((project, i) => (
-                        <motion.div
-                          key={project.id}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                        >
-                          <Card
-                            className="cursor-pointer transition-shadow hover:shadow-md"
-                            onClick={() => navigate(`/projects/${project.id}`)}
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-base">{project.name}</CardTitle>
-                                <div className="flex items-center gap-1">
-                                  {role === 'admin' && (
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
-                                          <Pencil className="mr-2 h-4 w-4" /> 수정
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
-                                        >
-                                          <Archive className="mr-2 h-4 w-4" /> 보관
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  )}
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              {project.description && (
-                                <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
-                              )}
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <CalendarDays className="h-3.5 w-3.5" />
-                                  {new Date(project.created_at).toLocaleDateString('ko-KR')}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3.5 w-3.5" />
-                                  {memberCounts[project.id] || 0}명
-                                </span>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
+                      {activeProjects.map((project, i) => renderProjectCard(project, i))}
                     </div>
                   )}
 
                   {/* Archived projects section - admin only */}
-                  {role === 'admin' && archivedProjects.length > 0 && (
+                  {isAdmin && archivedProjects.length > 0 && (
                     <div className="mt-10">
                       <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
                         <Archive className="h-4 w-4" /> 보관된 프로젝트 ({archivedProjects.length})
                       </h3>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {archivedProjects.map((project, i) => (
-                          <motion.div
-                            key={project.id}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                          >
-                            <Card
-                              className="cursor-pointer transition-shadow hover:shadow-md opacity-70"
-                              onClick={() => navigate(`/projects/${project.id}`)}
-                            >
-                              <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-base">{project.name}</CardTitle>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
-                                          <Pencil className="mr-2 h-4 w-4" /> 수정
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
-                                          <RotateCcw className="mr-2 h-4 w-4" /> 활성화
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-2">
-                                {project.description && (
-                                  <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
-                                )}
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <CalendarDays className="h-3.5 w-3.5" />
-                                    {new Date(project.created_at).toLocaleDateString('ko-KR')}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Users className="h-3.5 w-3.5" />
-                                    {memberCounts[project.id] || 0}명
-                                  </span>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        ))}
+                        {archivedProjects.map((project, i) => renderProjectCard(project, i, true))}
                       </div>
                     </div>
                   )}
@@ -528,6 +531,38 @@ export default function ProjectsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Admin join project dialog */}
+      <Dialog open={!!joinDialogProject} onOpenChange={(v) => !v && setJoinDialogProject(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>프로젝트 참여</DialogTitle>
+            <DialogDescription>
+              "{joinDialogProject?.name}" 프로젝트에 참여하시겠습니까?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>역할 (선택)</Label>
+              <Input
+                value={joinRole}
+                onChange={(e) => setJoinRole(e.target.value)}
+                placeholder="예: PM, 계약관리, QA 등"
+              />
+              <p className="text-xs text-muted-foreground">팀 멤버 목록에 표시되는 역할입니다</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setJoinDialogProject(null)}>
+                취소
+              </Button>
+              <Button className="flex-1" onClick={handleJoinProject} disabled={joining}>
+                {joining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                참여하기
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
