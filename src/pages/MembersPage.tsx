@@ -438,14 +438,14 @@ export default function MembersPage() {
       {/* Tab header */}
       <div className="mb-4 flex items-center justify-between border-b border-border">
         <button className="px-4 py-2.5 text-sm font-medium border-b-2 border-primary text-foreground -mb-px">
-          전체 구성원 {allMembers.length}
+          {isCurrentUserAdmin ? `전체 구성원 ${allMembers.length}` : `관리자 ${filteredMembers.length}`}
         </button>
       </div>
 
-      {/* Role filter */}
+      {/* Role filter - admin only */}
+      {isCurrentUserAdmin && (
       <div className="mb-4">
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
-          <SelectTrigger className="w-28">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
