@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Archive, RotateCcw } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Archive, RotateCcw, UserX } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +59,8 @@ export default function ProjectsPage() {
   const [joinDialogProject, setJoinDialogProject] = useState<Project | null>(null);
   const [joinRole, setJoinRole] = useState('');
   const [joining, setJoining] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -253,6 +255,35 @@ export default function ProjectsPage() {
       fetchProjects();
     }
   };
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to delete account');
+      
+      await supabase.auth.signOut();
+      toast({ title: '회원 탈퇴가 완료되었습니다' });
+      navigate('/login');
+    } catch (err: any) {
+      toast({ title: '탈퇴 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setDeleteAccountOpen(false);
+    }
+  };
 
   const renderProjectCard = (project: Project, i: number, isArchived = false) => {
     const isJoined = joinedProjectIds.has(project.id);
@@ -338,12 +369,22 @@ export default function ProjectsPage() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">
-              {role === 'admin' ? '관리자' : '작업자'}
-            </span>
-            <Button variant="ghost" size="icon" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <span className="text-sm">{role === 'admin' ? '관리자' : '작업자'}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="mr-2 h-4 w-4" /> 로그아웃
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={() => setDeleteAccountOpen(true)}>
+                  <UserX className="mr-2 h-4 w-4" /> 회원 탈퇴
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -563,6 +604,31 @@ export default function ProjectsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete account confirmation */}
+      <AlertDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>회원 탈퇴</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAdmin
+                ? '정말 탈퇴하시겠습니까? 관리자 계정은 동일 이메일로 다시 가입할 수 있습니다.'
+                : '정말 탈퇴하시겠습니까? 탈퇴 후 재가입 시 새로운 회원으로 처리되며, 기존 데이터는 복구되지 않습니다.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              탈퇴하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
