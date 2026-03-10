@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           call_id: string
           created_at: string
+          desired_quantity: number | null
           id: string
           status: Database["public"]["Enums"]["application_status"]
           worker_id: string
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           call_id: string
           created_at?: string
+          desired_quantity?: number | null
           id?: string
           status?: Database["public"]["Enums"]["application_status"]
           worker_id: string
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           call_id?: string
           created_at?: string
+          desired_quantity?: number | null
           id?: string
           status?: Database["public"]["Enums"]["application_status"]
           worker_id?: string
@@ -49,6 +52,7 @@ export type Database = {
       allocation_assignments: {
         Row: {
           assigned_at: string
+          assigned_quantity: number | null
           call_id: string
           data_ref: string | null
           distributed_done_at: string | null
@@ -58,6 +62,7 @@ export type Database = {
         }
         Insert: {
           assigned_at?: string
+          assigned_quantity?: number | null
           call_id: string
           data_ref?: string | null
           distributed_done_at?: string | null
@@ -67,6 +72,7 @@ export type Database = {
         }
         Update: {
           assigned_at?: string
+          assigned_quantity?: number | null
           call_id?: string
           data_ref?: string | null
           distributed_done_at?: string | null
