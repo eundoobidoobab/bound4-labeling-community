@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
+import GuideBoard from '@/components/GuideBoard';
 
 interface Board {
   id: string;
