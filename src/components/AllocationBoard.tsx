@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { motion } from 'framer-motion';
 import {
   Loader2, Plus, Calendar, Clock, Users, CheckCircle2, XCircle,
-  UserCheck, Send, ChevronRight, AlertTriangle, Package
+  UserCheck, ChevronLeft, ChevronRight, AlertTriangle, Package, Send
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +35,7 @@ interface Application {
   worker_id: string;
   status: 'APPLIED' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
   created_at: string;
+  desired_quantity: number | null;
 }
 
 interface Assignment {
@@ -42,6 +44,7 @@ interface Assignment {
   worker_id: string;
   status: 'ASSIGNED' | 'DISTRIBUTED_DONE';
   data_ref: string | null;
+  assigned_quantity: number | null;
   assigned_at: string;
   distributed_done_at: string | null;
 }
@@ -74,13 +77,23 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   const [newDeadline, setNewDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Detail view
+  // Detail view (inline, not dialog)
   const [selectedCall, setSelectedCall] = useState<AllocationCall | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Worker's own applications for quick status display
+  // Admin: checked applicants for bulk distribute
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  // Admin: per-applicant assigned quantity overrides
+  const [quantityOverrides, setQuantityOverrides] = useState<Record<string, string>>({});
+
+  // Worker apply dialog
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyQuantity, setApplyQuantity] = useState('');
+  const [applyCallId, setApplyCallId] = useState<string | null>(null);
+
+  // Worker's own applications
   const [myApplications, setMyApplications] = useState<Record<string, Application>>({});
 
   useEffect(() => {
@@ -97,7 +110,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     const items = (data || []) as AllocationCall[];
     setCalls(items);
 
-    // Fetch profiles for creators
     const creatorIds = [...new Set(items.map(c => c.created_by))];
     if (creatorIds.length > 0) {
       const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', creatorIds);
@@ -106,7 +118,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       setProfiles(map);
     }
 
-    // For workers: fetch their applications across all calls
     if (user && !isAdmin && items.length > 0) {
       const { data: apps } = await supabase
         .from('allocation_applications')
@@ -124,6 +135,8 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   const fetchCallDetail = async (call: AllocationCall) => {
     setSelectedCall(call);
     setDetailLoading(true);
+    setCheckedIds(new Set());
+    setQuantityOverrides({});
 
     const [appsRes, assignsRes] = await Promise.all([
       supabase.from('allocation_applications').select('*').eq('call_id', call.id).order('created_at', { ascending: true }),
@@ -135,7 +148,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     setApplications(apps);
     setAssignments(assigns);
 
-    // Fetch worker profiles
     const workerIds = [...new Set([...apps.map(a => a.worker_id), ...assigns.map(a => a.worker_id)])];
     if (workerIds.length > 0) {
       const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', workerIds);
@@ -175,18 +187,23 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     }
   };
 
-  const handleApply = async (callId: string) => {
-    if (!user) return;
+  const handleApply = async () => {
+    if (!user || !applyCallId) return;
+    const qty = applyQuantity.trim() ? parseInt(applyQuantity) : null;
     const { error } = await supabase.from('allocation_applications').insert({
-      call_id: callId,
+      call_id: applyCallId,
       worker_id: user.id,
-    });
+      desired_quantity: qty,
+    } as any);
     if (error) {
       toast({ title: '신청 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '신청 완료' });
+      setApplyOpen(false);
+      setApplyQuantity('');
+      setApplyCallId(null);
       fetchCalls();
-      if (selectedCall?.id === callId) fetchCallDetail(selectedCall);
+      if (selectedCall?.id === applyCallId) fetchCallDetail(selectedCall);
     }
   };
 
@@ -194,82 +211,125 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     const { error } = await supabase.from('allocation_applications').update({ status }).eq('id', appId);
     if (error) {
       toast({ title: '상태 변경 실패', description: error.message, variant: 'destructive' });
-    } else {
-      if (selectedCall) fetchCallDetail(selectedCall);
+    } else if (selectedCall) {
+      fetchCallDetail(selectedCall);
     }
   };
 
-  const handleAssignSelected = async () => {
-    if (!selectedCall) return;
-    const selectedWorkers = applications.filter(a => a.status === 'SELECTED');
-    if (selectedWorkers.length === 0) {
-      toast({ title: '선발된 작업자가 없습니다', variant: 'destructive' });
-      return;
-    }
-    const existingWorkerIds = new Set(assignments.map(a => a.worker_id));
-    const newAssigns = selectedWorkers
-      .filter(a => !existingWorkerIds.has(a.worker_id))
-      .map(a => ({
-        call_id: selectedCall.id,
-        worker_id: a.worker_id,
+  const handleDistributeChecked = async () => {
+    if (!selectedCall || checkedIds.size === 0) return;
+    setSubmitting(true);
+
+    try {
+      // Get checked applications
+      const checkedApps = applications.filter(a => checkedIds.has(a.id));
+
+      // First, mark all checked as SELECTED if not already
+      const toSelect = checkedApps.filter(a => a.status === 'APPLIED');
+      for (const app of toSelect) {
+        await supabase.from('allocation_applications').update({ status: 'SELECTED' }).eq('id', app.id);
+      }
+
+      // Create assignments for those who don't have one yet
+      const existingWorkerIds = new Set(assignments.map(a => a.worker_id));
+      const newAssigns = checkedApps
+        .filter(a => !existingWorkerIds.has(a.worker_id))
+        .map(a => {
+          const overrideQty = quantityOverrides[a.id];
+          const qty = overrideQty !== undefined && overrideQty !== ''
+            ? parseInt(overrideQty)
+            : a.desired_quantity;
+          return {
+            call_id: selectedCall.id,
+            worker_id: a.worker_id,
+            assigned_quantity: qty,
+            status: 'DISTRIBUTED_DONE' as const,
+            distributed_done_at: new Date().toISOString(),
+          };
+        });
+
+      // Update existing assignments to DISTRIBUTED_DONE
+      const existingToUpdate = checkedApps
+        .filter(a => existingWorkerIds.has(a.worker_id))
+        .map(a => {
+          const assign = assignments.find(as => as.worker_id === a.worker_id);
+          return assign;
+        })
+        .filter(Boolean) as Assignment[];
+
+      for (const assign of existingToUpdate) {
+        const app = checkedApps.find(a => a.worker_id === assign.worker_id);
+        const overrideQty = app ? quantityOverrides[app.id] : undefined;
+        const qty = overrideQty !== undefined && overrideQty !== ''
+          ? parseInt(overrideQty)
+          : app?.desired_quantity ?? assign.assigned_quantity;
+        await supabase
+          .from('allocation_assignments')
+          .update({
+            status: 'DISTRIBUTED_DONE',
+            distributed_done_at: new Date().toISOString(),
+            assigned_quantity: qty,
+          } as any)
+          .eq('id', assign.id);
+      }
+
+      if (newAssigns.length > 0) {
+        const { error } = await supabase.from('allocation_assignments').insert(newAssigns as any);
+        if (error) throw error;
+      }
+
+      // Create notifications for all checked workers
+      const notifs = checkedApps.map(a => ({
+        user_id: a.worker_id,
+        type: 'ALLOCATION_DISTRIBUTED' as const,
+        title: '배분 할당 완료',
+        body: `"${selectedCall.title}" 작업이 배분되었습니다.`,
+        project_id: projectId,
+        deep_link: `/projects/${projectId}/boards/${boardId}`,
       }));
-    if (newAssigns.length === 0) {
-      toast({ title: '이미 모두 배정되었습니다' });
-      return;
-    }
-    const { error } = await supabase.from('allocation_assignments').insert(newAssigns);
-    if (error) {
-      toast({ title: '배정 실패', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: `${newAssigns.length}명이 배정되었습니다` });
+
+      await supabase.from('notifications').insert(notifs);
+
+      toast({ title: `${checkedIds.size}명에게 할당 완료` });
       fetchCallDetail(selectedCall);
+    } catch (err: any) {
+      toast({ title: '할당 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDistribute = async (assignmentId: string) => {
-    const { error } = await supabase
-      .from('allocation_assignments')
-      .update({ status: 'DISTRIBUTED_DONE', distributed_done_at: new Date().toISOString() })
-      .eq('id', assignmentId);
-    if (error) {
-      toast({ title: '배분 완료 실패', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: '배분 완료 처리되었습니다' });
-      if (selectedCall) fetchCallDetail(selectedCall);
-    }
+  const toggleCheck = (appId: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(appId)) next.delete(appId);
+      else next.add(appId);
+      return next;
+    });
   };
 
-  const handleDistributeAll = async () => {
-    if (!selectedCall) return;
-    const pending = assignments.filter(a => a.status === 'ASSIGNED');
-    if (pending.length === 0) return;
-    const ids = pending.map(a => a.id);
-    const { error } = await supabase
-      .from('allocation_assignments')
-      .update({ status: 'DISTRIBUTED_DONE', distributed_done_at: new Date().toISOString() })
-      .in('id', ids);
-    if (error) {
-      toast({ title: '일괄 배분 완료 실패', description: error.message, variant: 'destructive' });
+  const toggleAll = () => {
+    if (checkedIds.size === applications.length) {
+      setCheckedIds(new Set());
     } else {
-      toast({ title: `${pending.length}명 배분 완료 처리` });
-      fetchCallDetail(selectedCall);
+      setCheckedIds(new Set(applications.map(a => a.id)));
     }
   };
 
   const getCallStatus = (call: AllocationCall) => {
     const now = new Date();
     const deadline = new Date(call.apply_deadline);
-    if (now < deadline) return { label: '모집 중', variant: 'default' as const, icon: Users };
-    return { label: '모집 마감', variant: 'secondary' as const, icon: Clock };
+    if (now < deadline) return { label: '신청 중', variant: 'default' as const };
+    return { label: '마감', variant: 'secondary' as const };
   };
 
-  const getAppStatusBadge = (status: string) => {
+  const getAppStatusUI = (status: string) => {
     switch (status) {
-      case 'APPLIED': return { label: '신청됨', variant: 'outline' as const };
-      case 'SELECTED': return { label: '선발', variant: 'default' as const };
-      case 'REJECTED': return { label: '미선발', variant: 'destructive' as const };
-      case 'WITHDRAWN': return { label: '철회', variant: 'secondary' as const };
-      default: return { label: status, variant: 'outline' as const };
+      case 'APPLIED': return { label: '미선택', color: 'text-muted-foreground', icon: XCircle };
+      case 'SELECTED': return { label: '선택됨', color: 'text-primary', icon: CheckCircle2 };
+      case 'REJECTED': return { label: '미선발', color: 'text-destructive', icon: XCircle };
+      case 'WITHDRAWN': return { label: '철회', color: 'text-muted-foreground', icon: AlertTriangle };
+      default: return { label: status, color: 'text-muted-foreground', icon: Clock };
     }
   };
 
@@ -281,9 +341,208 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     );
   }
 
+  // Detail view (matches reference image)
+  if (selectedCall) {
+    const status = getCallStatus(selectedCall);
+    const selectedCount = checkedIds.size;
+    const isWorker = !isAdmin;
+    const myApp = applications.find(a => a.worker_id === user?.id);
+    const myAssignment = assignments.find(a => a.worker_id === user?.id);
+
+    return (
+      <div>
+        {/* Back button */}
+        <button
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+          onClick={() => setSelectedCall(null)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          할당 게시판으로 돌아가기
+        </button>
+
+        {/* Call info card */}
+        <Card className="mb-6">
+          <CardContent className="py-6">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <Calendar className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-foreground">{selectedCall.title}</h2>
+                  <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
+                </div>
+                {selectedCall.description && (
+                  <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
+                )}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    신청 마감: {formatDateTime(selectedCall.apply_deadline)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5" />
+                    {applications.length}명 신청
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {detailLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Worker view */}
+            {isWorker && (
+              <WorkerDetailSection
+                call={selectedCall}
+                myApp={myApp}
+                myAssignment={myAssignment}
+                onApplyClick={() => {
+                  setApplyCallId(selectedCall.id);
+                  setApplyOpen(true);
+                }}
+              />
+            )}
+
+            {/* Admin: Applicant list */}
+            {isAdmin && (
+              <Card>
+                <CardContent className="py-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-foreground">
+                      신청자 목록 ({applications.length}명)
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      {selectedCount > 0 && (
+                        <span className="text-sm text-muted-foreground">{selectedCount}명 선택됨</span>
+                      )}
+                      <Button
+                        onClick={handleDistributeChecked}
+                        disabled={selectedCount === 0 || submitting}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5"
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                        할당 완료
+                      </Button>
+                    </div>
+                  </div>
+
+                  {applications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">아직 신청자가 없습니다</p>
+                  ) : (
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      {/* Table header */}
+                      <div className="grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
+                        <div>
+                          <Checkbox
+                            checked={checkedIds.size === applications.length && applications.length > 0}
+                            onCheckedChange={toggleAll}
+                          />
+                        </div>
+                        <div>작업자</div>
+                        <div>희망 수량</div>
+                        <div>신청 시각</div>
+                        <div className="text-right">상태</div>
+                      </div>
+
+                      {/* Rows */}
+                      {applications.map((app) => {
+                        const worker = profiles[app.worker_id];
+                        const statusUI = getAppStatusUI(app.status);
+                        const StatusIcon = statusUI.icon;
+                        const isChecked = checkedIds.has(app.id);
+                        const existingAssignment = assignments.find(a => a.worker_id === app.worker_id);
+                        const isDone = existingAssignment?.status === 'DISTRIBUTED_DONE';
+                        const initial = (worker?.display_name || worker?.email || '?').charAt(0).toUpperCase();
+
+                        // Color for avatar
+                        const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
+                        const colorIdx = initial.charCodeAt(0) % colors.length;
+
+                        return (
+                          <div
+                            key={app.id}
+                            className={`grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${
+                              isChecked ? 'bg-primary/5' : 'hover:bg-muted/30'
+                            } ${isDone ? 'opacity-60' : ''}`}
+                          >
+                            <div>
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => toggleCheck(app.id)}
+                                disabled={isDone}
+                              />
+                            </div>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar className="h-9 w-9 shrink-0">
+                                <AvatarFallback className={`text-xs text-white ${colors[colorIdx]}`}>
+                                  {initial}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {worker?.display_name || worker?.email || '알 수 없음'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">{worker?.email}</p>
+                              </div>
+                            </div>
+                            <div>
+                              {isDone ? (
+                                <span className="text-sm text-foreground">
+                                  {existingAssignment?.assigned_quantity ?? app.desired_quantity ?? '-'}
+                                </span>
+                              ) : isChecked ? (
+                                <Input
+                                  type="number"
+                                  className="h-8 w-20 text-sm"
+                                  placeholder={app.desired_quantity?.toString() || '-'}
+                                  value={quantityOverrides[app.id] ?? app.desired_quantity?.toString() ?? ''}
+                                  onChange={e => setQuantityOverrides(prev => ({ ...prev, [app.id]: e.target.value }))}
+                                />
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  {app.desired_quantity ?? '-'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(app.created_at).toLocaleDateString('ko-KR')} {new Date(app.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className="text-right">
+                              {isDone ? (
+                                <Badge variant="secondary" className="gap-1 text-xs text-primary">
+                                  <CheckCircle2 className="h-3 w-3" /> 배분완료
+                                </Badge>
+                              ) : (
+                                <div className="flex items-center justify-end gap-1">
+                                  <StatusIcon className={`h-3.5 w-3.5 ${statusUI.color}`} />
+                                  <span className={`text-xs ${statusUI.color}`}>{statusUI.label}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Calls list view
   return (
     <div>
-      {/* Admin: Create new call */}
       {isAdmin && (
         <div className="mb-6">
           <Button onClick={() => setCreateOpen(true)}>
@@ -292,7 +551,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         </div>
       )}
 
-      {/* Calls list */}
       {calls.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
@@ -302,48 +560,38 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         <div className="space-y-3">
           {calls.map((call, i) => {
             const status = getCallStatus(call);
-            const StatusIcon = status.icon;
-            const creator = profiles[call.created_by];
             const myApp = myApplications[call.id];
-
             return (
               <motion.div key={call.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
                 <Card
                   className="cursor-pointer hover:border-primary/30 transition-colors"
                   onClick={() => fetchCallDetail(call)}
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <Badge variant={status.variant} className="gap-1 text-xs">
-                            <StatusIcon className="h-3 w-3" /> {status.label}
-                          </Badge>
+                          <span className="text-base font-semibold text-foreground">{call.title}</span>
+                          <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
                           {myApp && (
-                            <Badge variant={getAppStatusBadge(myApp.status).variant} className="text-xs">
-                              {getAppStatusBadge(myApp.status).label}
+                            <Badge variant={myApp.status === 'SELECTED' ? 'default' : 'outline'} className="text-xs">
+                              {getAppStatusUI(myApp.status).label}
                             </Badge>
                           )}
                         </div>
-                        <CardTitle className="text-base">{call.title}</CardTitle>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            작업일: {call.work_date}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            마감: {formatDateTime(call.apply_deadline)}
+                          </span>
+                        </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        작업일: {call.work_date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        마감: {formatDateTime(call.apply_deadline)}
-                      </span>
-                    </div>
-                    {call.description && (
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{call.description}</p>
-                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -384,158 +632,45 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         </DialogContent>
       </Dialog>
 
-      {/* Call detail dialog */}
-      <Dialog open={!!selectedCall} onOpenChange={v => !v && setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
-          {selectedCall && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={getCallStatus(selectedCall).variant} className="gap-1 text-xs">
-                    {getCallStatus(selectedCall).label}
-                  </Badge>
-                </div>
-                <DialogTitle>{selectedCall.title}</DialogTitle>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-                  <span>작업일: {selectedCall.work_date}</span>
-                  <span>마감: {formatDateTime(selectedCall.apply_deadline)}</span>
-                </div>
-                {selectedCall.description && (
-                  <p className="text-sm text-muted-foreground mt-2">{selectedCall.description}</p>
-                )}
-              </DialogHeader>
-
-              {detailLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
-                <div className="space-y-6 mt-4">
-                  {/* Worker: Apply button */}
-                  {!isAdmin && (
-                    <WorkerApplySection
-                      call={selectedCall}
-                      myApp={applications.find(a => a.worker_id === user?.id)}
-                      myAssignment={assignments.find(a => a.worker_id === user?.id)}
-                      onApply={() => handleApply(selectedCall.id)}
-                    />
-                  )}
-
-                  {/* Admin: Applicants */}
-                  {isAdmin && (
-                    <>
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                          <Users className="h-4 w-4" /> 신청자 ({applications.length}명)
-                        </h3>
-                        {applications.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">아직 신청자가 없습니다</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {applications.map(app => {
-                              const worker = profiles[app.worker_id];
-                              const badge = getAppStatusBadge(app.status);
-                              return (
-                                <div key={app.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                      {(worker?.display_name || worker?.email || '?').charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground">{worker?.display_name || worker?.email || '알 수 없음'}</p>
-                                    <p className="text-xs text-muted-foreground">{formatDateTime(app.created_at)}</p>
-                                  </div>
-                                  <Badge variant={badge.variant} className="text-xs">{badge.label}</Badge>
-                                  {app.status === 'APPLIED' && (
-                                    <div className="flex gap-1">
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:text-primary" onClick={() => handleUpdateAppStatus(app.id, 'SELECTED')}>
-                                        <CheckCircle2 className="h-4 w-4" />
-                                      </Button>
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleUpdateAppStatus(app.id, 'REJECTED')}>
-                                        <XCircle className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {applications.some(a => a.status === 'SELECTED') && (
-                          <Button className="mt-3" size="sm" onClick={handleAssignSelected}>
-                            <UserCheck className="mr-1 h-3.5 w-3.5" /> 선발자 배정
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Assignments */}
-                      {assignments.length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                            <Package className="h-4 w-4" /> 배정 현황 ({assignments.length}명)
-                          </h3>
-                          <div className="space-y-2">
-                            {assignments.map(assign => {
-                              const worker = profiles[assign.worker_id];
-                              const isDone = assign.status === 'DISTRIBUTED_DONE';
-                              return (
-                                <div key={assign.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                      {(worker?.display_name || worker?.email || '?').charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground">{worker?.display_name || worker?.email || '알 수 없음'}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {isDone ? `배분 완료: ${formatDateTime(assign.distributed_done_at!)}` : `배정됨: ${formatDateTime(assign.assigned_at)}`}
-                                    </p>
-                                  </div>
-                                  {isDone ? (
-                                    <Badge variant="secondary" className="gap-1 text-primary text-xs">
-                                      <CheckCircle2 className="h-3 w-3" /> 완료
-                                    </Badge>
-                                  ) : (
-                                    <Button size="sm" variant="outline" onClick={() => handleDistribute(assign.id)}>
-                                      <Send className="mr-1 h-3.5 w-3.5" /> 배분 완료
-                                    </Button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {assignments.some(a => a.status === 'ASSIGNED') && (
-                            <Button className="mt-3" size="sm" onClick={handleDistributeAll}>
-                              <Send className="mr-1 h-3.5 w-3.5" /> 전체 배분 완료
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+      {/* Worker apply dialog with quantity */}
+      <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyCallId(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>작업 신청</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>희망 수량 (선택)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={applyQuantity}
+                onChange={e => setApplyQuantity(e.target.value)}
+                placeholder="배분 받고 싶은 수량을 입력하세요"
+              />
+              <p className="text-xs text-muted-foreground">입력하지 않으면 관리자가 수량을 결정합니다</p>
+            </div>
+            <Button className="w-full" onClick={handleApply}>
+              <UserCheck className="mr-2 h-4 w-4" /> 신청하기
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-// Worker's apply/status section
-function WorkerApplySection({
+// Worker detail section
+function WorkerDetailSection({
   call,
   myApp,
   myAssignment,
-  onApply,
+  onApplyClick,
 }: {
   call: AllocationCall;
   myApp?: Application;
   myAssignment?: Assignment;
-  onApply: () => void;
+  onApplyClick: () => void;
 }) {
   const now = new Date();
   const deadline = new Date(call.apply_deadline);
@@ -544,25 +679,28 @@ function WorkerApplySection({
   if (myAssignment) {
     const isDone = myAssignment.status === 'DISTRIBUTED_DONE';
     return (
-      <Card className={isDone ? 'border-primary/30 bg-primary/5' : 'border-accent bg-accent/50'}>
-        <CardContent className="py-4">
+      <Card className={isDone ? 'border-primary/30 bg-primary/5' : ''}>
+        <CardContent className="py-6">
           <div className="flex items-center gap-3">
             {isDone ? (
               <>
-                <CheckCircle2 className="h-5 w-5 text-primary" />
+                <CheckCircle2 className="h-6 w-6 text-primary" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">배분 완료</p>
-                  <p className="text-xs text-muted-foreground">
-                    {myAssignment.distributed_done_at && formatDateTime(myAssignment.distributed_done_at)}
-                  </p>
+                  <p className="text-base font-semibold text-foreground">배분 완료</p>
+                  {myAssignment.assigned_quantity && (
+                    <p className="text-sm text-muted-foreground">배분 수량: {myAssignment.assigned_quantity}</p>
+                  )}
+                  {myAssignment.distributed_done_at && (
+                    <p className="text-xs text-muted-foreground">{formatDateTime(myAssignment.distributed_done_at)}</p>
+                  )}
                 </div>
               </>
             ) : (
               <>
-                <Package className="h-5 w-5 text-accent-foreground" />
+                <Package className="h-6 w-6 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">배정되었습니다</p>
-                  <p className="text-xs text-muted-foreground">배분 완료를 기다리는 중입니다</p>
+                  <p className="text-base font-semibold text-foreground">배정되었습니다</p>
+                  <p className="text-sm text-muted-foreground">배분 완료를 기다리는 중입니다</p>
                 </div>
               </>
             )}
@@ -573,22 +711,26 @@ function WorkerApplySection({
   }
 
   if (myApp) {
-    const badge = (() => {
-      switch (myApp.status) {
-        case 'APPLIED': return { label: '신청 완료 — 결과를 기다리는 중입니다', icon: Clock, color: 'text-primary' };
-        case 'SELECTED': return { label: '선발되었습니다! 배정을 기다리는 중입니다', icon: CheckCircle2, color: 'text-primary' };
-        case 'REJECTED': return { label: '이번 공고에서는 선발되지 않았습니다', icon: XCircle, color: 'text-destructive' };
-        case 'WITHDRAWN': return { label: '신청이 철회되었습니다', icon: AlertTriangle, color: 'text-muted-foreground' };
-        default: return { label: myApp.status, icon: Clock, color: 'text-muted-foreground' };
-      }
-    })();
-    const Icon = badge.icon;
+    const statusMap: Record<string, { label: string; icon: any; color: string }> = {
+      APPLIED: { label: '신청 완료 — 결과를 기다리는 중입니다', icon: Clock, color: 'text-primary' },
+      SELECTED: { label: '선발되었습니다! 배정을 기다리는 중입니다', icon: CheckCircle2, color: 'text-primary' },
+      REJECTED: { label: '이번 공고에서는 선발되지 않았습니다', icon: XCircle, color: 'text-destructive' },
+      WITHDRAWN: { label: '신청이 철회되었습니다', icon: AlertTriangle, color: 'text-muted-foreground' },
+    };
+    const s = statusMap[myApp.status] || statusMap.APPLIED;
+    const Icon = s.icon;
+
     return (
       <Card>
-        <CardContent className="py-4">
+        <CardContent className="py-6">
           <div className="flex items-center gap-3">
-            <Icon className={`h-5 w-5 ${badge.color}`} />
-            <p className="text-sm text-foreground">{badge.label}</p>
+            <Icon className={`h-5 w-5 ${s.color}`} />
+            <div>
+              <p className="text-sm text-foreground">{s.label}</p>
+              {myApp.desired_quantity && (
+                <p className="text-xs text-muted-foreground mt-1">희망 수량: {myApp.desired_quantity}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -598,18 +740,16 @@ function WorkerApplySection({
   if (isPastDeadline) {
     return (
       <Card>
-        <CardContent className="py-4">
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">신청 마감이 지났습니다</p>
-          </div>
+        <CardContent className="py-6 text-center">
+          <Clock className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">신청 마감이 지났습니다</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Button className="w-full" onClick={onApply}>
+    <Button className="w-full" size="lg" onClick={onApplyClick}>
       <UserCheck className="mr-2 h-4 w-4" /> 작업 신청하기
     </Button>
   );
