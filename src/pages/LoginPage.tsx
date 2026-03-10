@@ -6,15 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,16 +45,63 @@ export default function LoginPage() {
       toast({ title: '이름을 입력해주세요', variant: 'destructive' });
       return;
     }
+    if (password !== confirmPassword) {
+      toast({ title: '비밀번호가 일치하지 않습니다', description: '비밀번호 확인을 다시 입력해주세요.', variant: 'destructive' });
+      return;
+    }
     setIsLoading(true);
     const { error } = await signUp(email, password, displayName.trim());
     setIsLoading(false);
     if (error) {
       toast({ title: '회원가입 실패', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '회원가입 완료', description: '이메일을 확인하여 인증을 완료해주세요.' });
-      setMode('login');
+      setSignUpSuccess(true);
     }
   };
+
+  if (signUpSuccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm"
+        >
+          <Card>
+            <CardContent className="pt-8 pb-6 text-center space-y-4">
+              <div className="flex justify-center">
+                <CheckCircle2 className="h-16 w-16 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">이메일을 확인해주세요</h2>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{email}</span>
+                (으)로 인증 메일을 발송했습니다.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                메일함에서 인증 링크를 클릭하면 가입이 완료됩니다.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full mt-4"
+                onClick={() => {
+                  setSignUpSuccess(false);
+                  setMode('login');
+                  setPassword('');
+                  setConfirmPassword('');
+                }}
+              >
+                로그인으로 돌아가기
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -112,7 +161,28 @@ export default function LoginPage() {
                   minLength={mode === 'signup' ? 6 : undefined}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              {mode === 'signup' && (
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">비밀번호 확인</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="비밀번호를 다시 입력해주세요"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className={passwordsMismatch ? 'border-destructive focus-visible:ring-destructive' : passwordsMatch ? 'border-primary focus-visible:ring-primary' : ''}
+                  />
+                  {passwordsMismatch && (
+                    <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다</p>
+                  )}
+                  {passwordsMatch && (
+                    <p className="text-xs text-primary">비밀번호가 일치합니다</p>
+                  )}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={isLoading || (mode === 'signup' && passwordsMismatch)}>
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : mode === 'login' ? (
@@ -127,7 +197,10 @@ export default function LoginPage() {
             <div className="mt-4 text-center">
               <button
                 type="button"
-                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                onClick={() => {
+                  setMode(mode === 'login' ? 'signup' : 'login');
+                  setConfirmPassword('');
+                }}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
