@@ -185,7 +185,7 @@ export default function ProjectsPage() {
     setDeleteProject(null);
   };
 
-
+  return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
