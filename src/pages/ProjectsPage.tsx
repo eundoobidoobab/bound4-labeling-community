@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive, RotateCcw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
