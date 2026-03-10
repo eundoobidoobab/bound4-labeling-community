@@ -54,8 +54,9 @@ type RoleFilter = 'all' | 'admin' | 'worker';
 export default function MembersPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
