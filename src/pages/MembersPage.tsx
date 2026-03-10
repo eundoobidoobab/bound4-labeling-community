@@ -141,7 +141,6 @@ export default function MembersPage() {
           .filter(inv => inv.status === 'PENDING' && new Date(inv.expires_at) > new Date())
           .map(inv => inv.email.toLowerCase())
       );
-
       setSearchResults(
         data.filter((u: any) => !existingIds.has(u.id) && !pendingEmails.has(u.email.toLowerCase()))
       );
@@ -237,14 +236,12 @@ export default function MembersPage() {
 
   const pendingInvitations = invitations.filter(inv => inv.status === 'PENDING' && new Date(inv.expires_at) > new Date());
 
-  // Combine admins and members into a unified list for table display
   type UnifiedMember = {
     key: string;
     userId: string;
     display_name: string | null;
     email: string;
     roleLabel: string;
-    roleBadgeVariant: 'default' | 'secondary';
     isAdmin: boolean;
     adminRowId?: string;
     customRole: string | null;
@@ -259,7 +256,6 @@ export default function MembersPage() {
       display_name: a.display_name,
       email: a.email,
       roleLabel: a.custom_role || '관리자',
-      roleBadgeVariant: 'default' as const,
       isAdmin: true,
       adminRowId: a.id,
       customRole: a.custom_role,
@@ -272,7 +268,6 @@ export default function MembersPage() {
       display_name: m.display_name,
       email: m.email,
       roleLabel: '작업자',
-      roleBadgeVariant: 'secondary' as const,
       isAdmin: false,
       adminRowId: undefined,
       customRole: null,
@@ -347,7 +342,6 @@ export default function MembersPage() {
                       플랫폼에 가입된 사용자를 검색하여 프로젝트에 초대할 수 있습니다.
                     </p>
                   </div>
-
                   <div className="max-h-64 overflow-y-auto space-y-1">
                     {searching && (
                       <div className="flex justify-center py-4">
@@ -360,34 +354,18 @@ export default function MembersPage() {
                       </div>
                     )}
                     {searchResults.map((u) => (
-                      <div
-                        key={u.id}
-                        className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
+                      <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                             {(u.display_name || u.email).charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {u.display_name || u.email}
-                          </p>
-                          {u.display_name && (
-                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                          )}
+                          <p className="text-sm font-medium text-foreground truncate">{u.display_name || u.email}</p>
+                          {u.display_name && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleInviteUser(u)}
-                          disabled={invitingUserId === u.id}
-                        >
-                          {invitingUserId === u.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            '초대'
-                          )}
+                        <Button size="sm" variant="outline" onClick={() => handleInviteUser(u)} disabled={invitingUserId === u.id}>
+                          {invitingUserId === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '초대'}
                         </Button>
                       </div>
                     ))}
@@ -406,7 +384,7 @@ export default function MembersPage() {
                         required
                       />
                       <p className="text-xs text-muted-foreground">
-                        아직 가입하지 않은 사용자도 이메일로 초대할 수 있습니다. 해당 이메일로 가입 후 초대를 수락할 수 있습니다.
+                        아직 가입하지 않은 사용자도 이메일로 초대할 수 있습니다.
                       </p>
                     </div>
                     <Button type="submit" className="w-full" disabled={inviting}>
@@ -421,19 +399,14 @@ export default function MembersPage() {
         )}
       </div>
 
-      {/* Tab & filter */}
+      {/* Tab header */}
       <div className="mb-4 flex items-center justify-between border-b border-border">
-        <div className="flex items-center gap-1 -mb-px">
-          <button
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              'border-primary text-foreground'
-            }`}
-          >
-            전체 구성원 {allMembers.length}
-          </button>
-        </div>
+        <button className="px-4 py-2.5 text-sm font-medium border-b-2 border-primary text-foreground -mb-px">
+          전체 구성원 {allMembers.length}
+        </button>
       </div>
 
+      {/* Role filter */}
       <div className="mb-4">
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
           <SelectTrigger className="w-28">
@@ -518,7 +491,7 @@ export default function MembersPage() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => startEditRole(m as any)}
+                        onClick={() => startEditRole({ id: m.adminRowId!, admin_id: m.userId, display_name: m.display_name, email: m.email, custom_role: m.customRole })}
                       >
                         <Pencil className="h-3 w-3 text-muted-foreground" />
                       </Button>
@@ -560,210 +533,6 @@ export default function MembersPage() {
       {/* Pending invitations */}
       {pendingInvitations.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            <Mail className="h-4 w-4" /> 대기 중인 초대 ({pendingInvitations.length})
-          </h2>
-          <div className="space-y-2">
-            {pendingInvitations.map((inv, i) => (
-              <motion.div key={inv.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/20">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{inv.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(inv.created_at)} 초대 · {new Date(inv.expires_at).toLocaleDateString('ko-KR')} 만료
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs text-muted-foreground">대기 중</Badge>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-              <UserPlus className="mr-2 h-4 w-4" />
-              초대하기
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>작업자 초대</DialogTitle>
-            </DialogHeader>
-            <Tabs defaultValue="search" className="mt-2">
-              <TabsList className="w-full">
-                <TabsTrigger value="search" className="flex-1">
-                  <Search className="mr-2 h-4 w-4" />
-                  사용자 검색
-                </TabsTrigger>
-                <TabsTrigger value="email" className="flex-1">
-                  <Mail className="mr-2 h-4 w-4" />
-                  이메일 초대
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="search" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>이름 또는 이메일로 검색</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => handleSearchUsers(e.target.value)}
-                      placeholder="이름 또는 이메일 입력..."
-                      className="pl-9"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    플랫폼에 가입된 사용자를 검색하여 프로젝트에 초대할 수 있습니다.
-                  </p>
-                </div>
-
-                <div className="max-h-64 overflow-y-auto space-y-1">
-                  {searching && (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                  {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-                    <div className="text-center py-6 text-sm text-muted-foreground">
-                      검색 결과가 없습니다
-                    </div>
-                  )}
-                  {searchResults.map((u) => (
-                    <div
-                      key={u.id}
-                      className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-                          {(u.display_name || u.email).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {u.display_name || u.email}
-                        </p>
-                        {u.display_name && (
-                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleInviteUser(u)}
-                        disabled={invitingUserId === u.id}
-                      >
-                        {invitingUserId === u.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          '초대'
-                        )}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="email" className="space-y-4 mt-4">
-                <form onSubmit={handleInviteByEmail} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>이메일 주소</Label>
-                    <Input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="worker@example.com"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      아직 가입하지 않은 사용자도 이메일로 초대할 수 있습니다. 해당 이메일로 가입 후 초대를 수락할 수 있습니다.
-                    </p>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={inviting}>
-                    {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    초대 보내기
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Admins */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-          <Shield className="h-4 w-4" /> 관리자 ({admins.length})
-        </h2>
-        <div className="space-y-2">
-          {admins.map((admin, i) => (
-            <motion.div key={admin.admin_id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                    {(admin.display_name || admin.email).charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{admin.display_name || admin.email}</p>
-                  <p className="text-xs text-muted-foreground">{admin.email}</p>
-                </div>
-                <Badge variant="secondary" className="text-xs">관리자</Badge>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Members */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-          <Users className="h-4 w-4" /> 작업자 ({members.length})
-        </h2>
-        {members.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">아직 참여 중인 작업자가 없습니다</p>
-            <p className="text-xs text-muted-foreground mt-1">위의 초대하기 버튼으로 작업자를 초대하세요</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {members.map((member, i) => (
-              <motion.div key={member.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card group">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-                      {(member.display_name || member.email).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{member.display_name || member.email}</p>
-                    <p className="text-xs text-muted-foreground">{member.email}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(member.created_at)}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                    onClick={() => removeMember(member.id)}
-                  >
-                    제거
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Pending invitations */}
-      {pendingInvitations.length > 0 && (
-        <div>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
             <Mail className="h-4 w-4" /> 대기 중인 초대 ({pendingInvitations.length})
           </h2>
