@@ -152,7 +152,7 @@ export default function ProjectsPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
-          <h1 className="text-lg font-bold text-foreground">바운드포 라벨링</h1>
+          <h1 className="text-lg font-bold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/projects')}>바운드포 라벨링</h1>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
