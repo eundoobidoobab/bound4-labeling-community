@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,11 @@ export default function LoginPage() {
     const { error } = await signIn(email, password);
     setIsLoading(false);
     if (error) {
-      toast({ title: '로그인 실패', description: '이메일 또는 비밀번호를 확인해주세요.', variant: 'destructive' });
+      if (error.message === 'EMAIL_NOT_CONFIRMED') {
+        toast({ title: '이메일 인증이 필요합니다', description: '가입 시 발송된 인증 메일을 확인해주세요.', variant: 'destructive' });
+      } else {
+        toast({ title: '로그인 실패', description: '이메일 또는 비밀번호를 확인해주세요.', variant: 'destructive' });
+      }
     } else {
       navigate('/projects', { replace: true });
     }
@@ -50,11 +55,17 @@ export default function LoginPage() {
       return;
     }
     setIsLoading(true);
-    const { error } = await signUp(email, password, displayName.trim());
+    const { error, data } = await signUp(email, password, displayName.trim());
     setIsLoading(false);
     if (error) {
       toast({ title: '회원가입 실패', description: error.message, variant: 'destructive' });
     } else {
+      // If user already exists but not confirmed, resend confirmation
+      if (data?.user?.identities?.length === 0) {
+        // User already exists - try to resend confirmation
+        await supabase.auth.resend({ type: 'signup', email });
+        toast({ title: '인증 메일 재발송', description: '이미 가입된 이메일입니다. 인증 메일을 다시 발송했습니다.' });
+      }
       setSignUpSuccess(true);
     }
   };
