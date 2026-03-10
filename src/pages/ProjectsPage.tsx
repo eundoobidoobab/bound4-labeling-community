@@ -364,12 +364,18 @@ export default function ProjectsPage() {
                                 <Pencil className="mr-2 h-4 w-4" /> 수정
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
-                              >
-                                <Archive className="mr-2 h-4 w-4" /> 보관
-                              </DropdownMenuItem>
+                              {project.status === 'ARCHIVED' ? (
+                                <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
+                                  <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" /> 보관
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
