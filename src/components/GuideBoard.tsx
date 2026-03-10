@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Clock, Plus, History, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,7 +68,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const fetchData = async () => {
     setLoading(true);
 
-    // Fetch documents
     const { data: docs } = await supabase
       .from('guide_documents')
       .select('*')
@@ -82,7 +80,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     if (docList.length > 0) {
       const docIds = docList.map(d => d.id);
 
-      // Fetch all versions
       const { data: vers } = await supabase
         .from('guide_versions')
         .select('*')
@@ -114,7 +111,26 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
             .eq('user_id', user.id)
             .eq('project_id', projectId)
             .in('guide_version_id', latestVersionIds);
-          setAcknowledgements(new Set((acks || []).map((a: any) => a.guide_version_id)));
+          const existingAcks = new Set((acks || []).map((a: any) => a.guide_version_id));
+          setAcknowledgements(existingAcks);
+
+          // Auto-acknowledge: mark unacknowledged latest versions as read
+          const unacked = latestVersionIds.filter(id => !existingAcks.has(id));
+          if (unacked.length > 0) {
+            const inserts = unacked.map(vId => ({
+              guide_version_id: vId,
+              user_id: user.id,
+              project_id: projectId,
+            }));
+            const { error } = await supabase.from('guide_acknowledgements').insert(inserts);
+            if (!error) {
+              setAcknowledgements(prev => {
+                const next = new Set(prev);
+                unacked.forEach(id => next.add(id));
+                return next;
+              });
+            }
+          }
         }
       }
     }
@@ -127,13 +143,11 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     setSubmitting(true);
 
     try {
-      // Upload file to guides bucket
       const ext = newFile.name.split('.').pop();
       const filePath = `${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, newFile);
       if (uploadError) throw uploadError;
 
-      // Create document
       const { data: doc, error: docError } = await supabase
         .from('guide_documents')
         .insert({ board_id: boardId, title: newTitle.trim() })
@@ -141,7 +155,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         .single();
       if (docError) throw docError;
 
-      // Create version 1
       const { data: version, error: verError } = await supabase
         .from('guide_versions')
         .insert({
@@ -155,7 +168,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         .single();
       if (verError) throw verError;
 
-      // Set as project latest guide
       await supabase
         .from('project_latest_guide')
         .upsert({
@@ -184,13 +196,11 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       const currentVersions = versions[versionDialogDoc.id] || [];
       const nextVersion = (currentVersions[0]?.version_number || 0) + 1;
 
-      // Upload file
       const ext = versionFile.name.split('.').pop();
       const filePath = `${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, versionFile);
       if (uploadError) throw uploadError;
 
-      // Create new version
       const { data: version, error: verError } = await supabase
         .from('guide_versions')
         .insert({
@@ -204,7 +214,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         .single();
       if (verError) throw verError;
 
-      // Update project latest guide
       await supabase
         .from('project_latest_guide')
         .upsert({
@@ -224,28 +233,31 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
-  const handleAcknowledge = async (versionId: string) => {
-    if (!user) return;
-    const { error } = await supabase.from('guide_acknowledgements').insert({
-      guide_version_id: versionId,
-      user_id: user.id,
-      project_id: projectId,
-    });
-    if (error) {
-      toast({ title: '확인 처리 실패', description: error.message, variant: 'destructive' });
-    } else {
-      setAcknowledgements(prev => new Set([...prev, versionId]));
-      toast({ title: '가이드 확인 완료' });
-    }
+  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 300);
+    return data?.signedUrl || null;
   };
 
   const handleDownload = async (filePath: string, fileName?: string) => {
-    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 60);
-    if (data?.signedUrl) {
+    const { data } = await supabase.storage.from('guides').download(filePath);
+    if (data) {
+      const url = URL.createObjectURL(data);
       const a = document.createElement('a');
-      a.href = data.signedUrl;
+      a.href = url;
       a.download = fileName || filePath;
       a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      toast({ title: '다운로드 실패', variant: 'destructive' });
+    }
+  };
+
+  const handlePreview = async (filePath: string) => {
+    const url = await getSignedUrl(filePath);
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      toast({ title: '미리보기 실패', variant: 'destructive' });
     }
   };
 
@@ -310,11 +322,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {latest && !isAcked && role !== 'admin' && (
-                          <Badge variant="destructive" className="gap-1">
-                            <AlertTriangle className="h-3 w-3" /> 미확인
-                          </Badge>
-                        )}
                         {latest && isAcked && (
                           <Badge variant="secondary" className="gap-1 text-primary">
                             <CheckCircle2 className="h-3 w-3" /> 확인됨
@@ -326,14 +333,14 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {latest && (
-                        <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`)}>
-                          <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
-                        </Button>
-                      )}
-                      {latest && !isAcked && (
-                        <Button size="sm" onClick={() => handleAcknowledge(latest.id)}>
-                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> 확인 완료
-                        </Button>
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path)}>
+                            <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`)}>
+                            <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
+                          </Button>
+                        </>
                       )}
                       {docVersions.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => setHistoryDoc(doc)}>
@@ -454,9 +461,14 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       {author?.display_name || author?.email || '알 수 없음'} · {formatDateTime(ver.created_at)}
                     </p>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`)}>
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(ver.file_path)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               );
             })}
