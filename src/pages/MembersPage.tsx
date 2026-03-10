@@ -290,9 +290,22 @@ export default function MembersPage() {
           : visibleMembers.filter(m => !m.isAdmin))
     : visibleMembers;
 
+  const handleCancelInvitation = async (invitationId: string) => {
+    const { error } = await supabase
+      .from('project_invitations')
+      .update({ status: 'EXPIRED' })
+      .eq('id', invitationId);
+
+    if (error) {
+      toast({ title: '초대 취소 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '초대가 취소되었습니다' });
+      fetchAll();
+    }
+  };
+
   const handleStartDm = async (adminId: string) => {
     if (!projectId || !user) return;
-    // Check for existing thread
     const { data: existing } = await supabase
       .from('dm_threads')
       .select('id')
@@ -306,7 +319,6 @@ export default function MembersPage() {
       return;
     }
 
-    // Create new thread
     const { data: newThread, error } = await supabase
       .from('dm_threads')
       .insert({ project_id: projectId, admin_id: adminId, worker_id: user.id })
