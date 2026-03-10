@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
 import { Loader2, MessageSquare, Pin, MoreHorizontal, Eye } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
+import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -236,7 +237,7 @@ export default function BoardPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
                               <span className="text-xs text-muted-foreground">
-                                {new Date(notice.created_at).toLocaleDateString('ko-KR')}
+                                {formatDateTime(notice.created_at)}
                               </span>
                               {notice.is_pinned && (
                                 <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
@@ -299,7 +300,7 @@ export default function BoardPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(post.created_at).toLocaleDateString('ko-KR')}
+                              {formatDateTime(post.created_at)}
                             </span>
                           </div>
                           <CardTitle className="text-base mt-1">{post.title}</CardTitle>

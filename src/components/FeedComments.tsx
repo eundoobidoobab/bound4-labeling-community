@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDateTime } from '@/lib/formatDate';
 
 const PREVIEW_COUNT = 3;
 
@@ -105,7 +106,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
                 {author?.display_name || author?.email || '알 수 없음'}
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {new Date(comment.created_at).toLocaleDateString('ko-KR')}
+                {formatDateTime(comment.created_at)}
               </span>
             </div>
             <p className="text-sm text-foreground whitespace-pre-wrap">{comment.body}</p>
