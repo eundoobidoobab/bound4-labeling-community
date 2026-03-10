@@ -711,16 +711,19 @@ export type Database = {
       project_admins: {
         Row: {
           admin_id: string
+          custom_role: string | null
           id: string
           project_id: string
         }
         Insert: {
           admin_id: string
+          custom_role?: string | null
           id?: string
           project_id: string
         }
         Update: {
           admin_id?: string
+          custom_role?: string | null
           id?: string
           project_id?: string
         }
