@@ -309,6 +309,7 @@ export default function BoardPage() {
                     <CardContent className="pl-16">
                       <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
                       <FeedAttachments attachments={postAttachments[post.id] || []} />
+                      <FeedComments type="post" parentId={post.id} />
                     </CardContent>
                   </Card>
                 </motion.div>

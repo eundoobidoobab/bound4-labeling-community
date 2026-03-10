@@ -249,6 +249,7 @@ export default function ProjectDetailPage() {
                       <CardContent className="pl-16">
                         <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
                         <FeedAttachments attachments={attachments[notice.id] || []} />
+                        <FeedComments type="notice" parentId={notice.id} />
                       </CardContent>
                     </Card>
                   </motion.div>
