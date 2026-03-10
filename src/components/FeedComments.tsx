@@ -35,16 +35,15 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const [submitting, setSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const tableName = type === 'post' ? 'comments' : 'notice_comments';
-  const fkColumn = type === 'post' ? 'post_id' : 'notice_id';
-
   const fetchComments = async () => {
-    const { data } = await supabase
-      .from(tableName)
-      .select('*')
-      .eq(fkColumn, parentId)
-      .order('created_at', { ascending: true });
-    const items = (data || []) as Comment[];
+    let items: Comment[] = [];
+    if (type === 'post') {
+      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId).order('created_at', { ascending: true });
+      items = (data || []) as Comment[];
+    } else {
+      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId).order('created_at', { ascending: true });
+      items = (data || []) as Comment[];
+    }
     setComments(items);
     setLoaded(true);
 
