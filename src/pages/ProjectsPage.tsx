@@ -59,20 +59,30 @@ export default function ProjectsPage() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    const items = (data || []) as Project[];
-    if (!error) setProjects(items);
+    let items = (data || []) as Project[];
+    if (!error) {
+      // Workers only see ACTIVE projects
+      if (role !== 'admin') {
+        items = items.filter(p => p.status === 'ACTIVE');
+      }
+      setProjects(items);
+    }
 
     // Fetch member counts
     if (items.length > 0) {
       const ids = items.map(p => p.id);
       const [membersRes, adminsRes] = await Promise.all([
-        supabase.from('project_memberships').select('project_id').eq('status', 'ACTIVE').in('project_id', ids),
-        supabase.from('project_admins').select('project_id').in('project_id', ids),
+        supabase.from('project_memberships').select('project_id, worker_id').eq('status', 'ACTIVE').in('project_id', ids),
+        supabase.from('project_admins').select('project_id, admin_id').in('project_id', ids),
       ]);
       const countMap: Record<string, number> = {};
-      ids.forEach(id => countMap[id] = 0);
-      (membersRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
-      (adminsRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
+      ids.forEach(id => {
+        const memberUserIds = new Set(
+          (membersRes.data || []).filter((r: any) => r.project_id === id).map((r: any) => r.worker_id)
+        );
+        (adminsRes.data || []).filter((r: any) => r.project_id === id).forEach((r: any) => memberUserIds.add(r.admin_id));
+        countMap[id] = memberUserIds.size;
+      });
       setMemberCounts(countMap);
     }
 
