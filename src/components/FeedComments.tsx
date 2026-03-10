@@ -105,7 +105,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
                 {author?.display_name || author?.email || '알 수 없음'}
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {new Date(comment.created_at).toLocaleDateString('ko-KR')}
+                {formatDateTime(comment.created_at)}
               </span>
             </div>
             <p className="text-sm text-foreground whitespace-pre-wrap">{comment.body}</p>

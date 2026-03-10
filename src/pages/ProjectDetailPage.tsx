@@ -217,7 +217,7 @@ export default function ProjectDetailPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                                <span className="text-xs text-muted-foreground">{new Date(notice.created_at).toLocaleDateString('ko-KR')}</span>
+                                <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
                                 {notice.is_pinned && (
                                   <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
                                     <Pin className="h-3 w-3" /> 고정

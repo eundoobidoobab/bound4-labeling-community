@@ -5,8 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Paperclip, X, ImageIcon, FileText } from 'lucide-react';
+import { Loader2, Paperclip, X, ImageIcon, FileText, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageEditor from '@/components/ImageEditor';
 
 interface UploadedFile {
   file: File;
@@ -26,6 +27,7 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +48,18 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
     });
   };
 
+  const handleImageEdited = (index: number, blob: Blob) => {
+    setFiles((prev) => {
+      const updated = [...prev];
+      const old = updated[index];
+      if (old.preview) URL.revokeObjectURL(old.preview);
+      const newFile = new File([blob], old.file.name, { type: 'image/jpeg' });
+      updated[index] = { file: newFile, preview: URL.createObjectURL(blob) };
+      return updated;
+    });
+    setEditingIndex(null);
+  };
+
   const uploadFiles = async (): Promise<{ file_path: string; file_name: string; file_size: number; mime_type: string }[]> => {
     const results = [];
     for (const { file } of files) {
@@ -53,12 +67,7 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
       const path = `${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from('board_attachments').upload(path, file);
       if (!error) {
-        results.push({
-          file_path: path,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type || 'application/octet-stream',
-        });
+        results.push({ file_path: path, file_name: file.name, file_size: file.size, mime_type: file.type || 'application/octet-stream' });
       }
     }
     return results;
@@ -81,105 +90,96 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
   };
 
   const initials = userDisplayName.charAt(0).toUpperCase();
+  const editingFile = editingIndex !== null ? files[editingIndex] : null;
 
   return (
-    <Card className="border border-border">
-      <CardContent className="p-4">
-        <div className="flex gap-3">
-          <Avatar className="h-9 w-9 shrink-0">
-            <AvatarFallback className="text-xs bg-primary/10 text-primary">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            {!expanded ? (
-              <button
-                onClick={() => setExpanded(true)}
-                className="w-full text-left rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-              >
-                {placeholder}
-              </button>
-            ) : (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={titlePlaceholder}
-                  className="font-medium"
-                  autoFocus
-                />
-                <Textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder={placeholder}
-                  rows={3}
-                  className="resize-none"
-                />
+    <>
+      <Card className="border border-border">
+        <CardContent className="p-4">
+          <div className="flex gap-3">
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              {!expanded ? (
+                <button
+                  onClick={() => setExpanded(true)}
+                  className="w-full text-left rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+                >
+                  {placeholder}
+                </button>
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={titlePlaceholder} className="font-medium" autoFocus />
+                  <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={placeholder} rows={3} className="resize-none" />
 
-                {/* File previews */}
-                <AnimatePresence>
-                  {files.length > 0 && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex flex-wrap gap-2">
-                      {files.map((f, i) => (
-                        <div key={i} className="relative group">
-                          {f.preview ? (
-                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
-                              <img src={f.preview} alt={f.file.name} className="w-full h-full object-cover" />
-                              <button
-                                onClick={() => removeFile(i)}
-                                className="absolute top-0.5 right-0.5 bg-background/80 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3 text-foreground" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/30">
-                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-xs text-foreground truncate max-w-[120px]">{f.file.name}</span>
-                              <button onClick={() => removeFile(i)} className="ml-1">
-                                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  {/* File previews */}
+                  <AnimatePresence>
+                    {files.length > 0 && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex flex-wrap gap-2">
+                        {files.map((f, i) => (
+                          <div key={i} className="relative group">
+                            {f.preview ? (
+                              <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border">
+                                <img src={f.preview} alt={f.file.name} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                                  <button onClick={() => setEditingIndex(i)} className="bg-background/80 rounded-full p-1">
+                                    <Pencil className="h-3 w-3 text-foreground" />
+                                  </button>
+                                  <button onClick={() => removeFile(i)} className="bg-background/80 rounded-full p-1">
+                                    <X className="h-3 w-3 text-foreground" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/30">
+                                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="text-xs text-foreground truncate max-w-[120px]">{f.file.name}</span>
+                                <button onClick={() => removeFile(i)} className="ml-1">
+                                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.pptx,.txt,.zip"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} type="button">
-                      <ImageIcon className="h-4 w-4 mr-1" />
-                      이미지
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} type="button">
-                      <Paperclip className="h-4 w-4 mr-1" />
-                      파일
-                    </Button>
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-1">
+                      <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.pptx,.txt,.zip" className="hidden" onChange={handleFileSelect} />
+                      <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} type="button">
+                        <ImageIcon className="h-4 w-4 mr-1" /> 이미지
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} type="button">
+                        <Paperclip className="h-4 w-4 mr-1" /> 파일
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => { setExpanded(false); setTitle(''); setBody(''); setFiles([]); }}>취소</Button>
+                      <Button size="sm" onClick={handleSubmit} disabled={submitting || !title.trim() || !body.trim()}>
+                        {submitting && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} 등록
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => { setExpanded(false); setTitle(''); setBody(''); setFiles([]); }}>
-                      취소
-                    </Button>
-                    <Button size="sm" onClick={handleSubmit} disabled={submitting || !title.trim() || !body.trim()}>
-                      {submitting && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                      등록
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Image Editor */}
+      {editingFile?.preview && editingIndex !== null && (
+        <ImageEditor
+          open
+          imageSrc={editingFile.preview}
+          onClose={() => setEditingIndex(null)}
+          onSave={(blob) => handleImageEdited(editingIndex, blob)}
+        />
+      )}
+    </>
   );
 }

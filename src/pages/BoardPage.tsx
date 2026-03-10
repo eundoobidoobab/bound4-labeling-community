@@ -299,7 +299,7 @@ export default function BoardPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(post.created_at).toLocaleDateString('ko-KR')}
+                              {formatDateTime(post.created_at)}
                             </span>
                           </div>
                           <CardTitle className="text-base mt-1">{post.title}</CardTitle>
