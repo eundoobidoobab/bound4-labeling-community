@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
 import GuideBoard from '@/components/GuideBoard';
+import AllocationBoard from '@/components/AllocationBoard';
 
 interface Board {
   id: string;
