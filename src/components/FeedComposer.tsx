@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, X, ImageIcon, FileText, Pencil, Plus, Upload } from 'lucide-react';
+import { Loader2, X, ImageIcon, FileText, Pencil, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageEditor from '@/components/ImageEditor';
 
@@ -30,7 +30,6 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback((selected: File[]) => {
     const newFiles: UploadedFile[] = selected.map((file) => ({
@@ -42,8 +41,7 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     addFiles(Array.from(e.target.files || []));
-    if (e.target === fileInputRef.current) fileInputRef.current!.value = '';
-    if (e.target === imageInputRef.current) imageInputRef.current!.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -136,55 +134,36 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={titlePlaceholder} className="font-medium" autoFocus />
                   <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={placeholder} rows={3} className="resize-none" />
 
-                  {/* Image previews - grid layout */}
+                  {/* Image previews */}
                   <AnimatePresence>
                     {imageFiles.length > 0 && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className={`grid gap-2 ${imageFiles.length === 1 ? 'grid-cols-1' : imageFiles.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+                        className={`grid gap-2 ${imageFiles.length === 1 ? 'grid-cols-2' : imageFiles.length === 2 ? 'grid-cols-3' : 'grid-cols-4'}`}
                       >
-                        {imageFiles.map((f, _i) => {
+                        {imageFiles.map((f) => {
                           const realIndex = files.indexOf(f);
                           return (
                             <div key={realIndex} className="relative group rounded-lg overflow-hidden border border-border aspect-square bg-muted">
                               <img src={f.preview} alt={f.file.name} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                                <button
-                                  onClick={() => setEditingIndex(realIndex)}
-                                  className="bg-background/90 rounded-full p-2 hover:bg-background transition-colors shadow-sm"
-                                  title="편집"
-                                >
-                                  <Pencil className="h-4 w-4 text-foreground" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                                <button onClick={() => setEditingIndex(realIndex)} className="bg-background/90 rounded-full p-1.5 shadow-sm" title="편집">
+                                  <Pencil className="h-3.5 w-3.5 text-foreground" />
                                 </button>
-                                <button
-                                  onClick={() => removeFile(realIndex)}
-                                  className="bg-background/90 rounded-full p-2 hover:bg-destructive/10 transition-colors shadow-sm"
-                                  title="삭제"
-                                >
-                                  <X className="h-4 w-4 text-destructive" />
+                                <button onClick={() => removeFile(realIndex)} className="bg-background/90 rounded-full p-1.5 shadow-sm" title="삭제">
+                                  <X className="h-3.5 w-3.5 text-destructive" />
                                 </button>
                               </div>
-                              <span className="absolute bottom-1 left-1 text-[10px] text-white bg-black/50 px-1.5 py-0.5 rounded truncate max-w-[90%]">
-                                {f.file.name}
-                              </span>
                             </div>
                           );
                         })}
-                        {/* Add more images button */}
-                        <button
-                          onClick={() => imageInputRef.current?.click()}
-                          className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary"
-                        >
-                          <Plus className="h-5 w-5" />
-                          <span className="text-xs">추가</span>
-                        </button>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  {/* Document file list */}
+                  {/* Document files */}
                   <AnimatePresence>
                     {docFiles.length > 0 && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-1.5">
@@ -205,29 +184,12 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
                     )}
                   </AnimatePresence>
 
-                  {/* Drop zone hint when no files */}
-                  {files.length === 0 && (
-                    <div
-                      onClick={() => imageInputRef.current?.click()}
-                      className="rounded-lg border-2 border-dashed border-border hover:border-primary/50 p-4 text-center cursor-pointer transition-colors group"
-                    >
-                      <Upload className="h-5 w-5 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
-                      <p className="text-xs text-muted-foreground mt-1.5 group-hover:text-foreground transition-colors">
-                        클릭하거나 파일을 드래그하여 첨부하세요
-                      </p>
-                    </div>
-                  )}
-
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-1">
-                      <input ref={imageInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileSelect} />
-                      <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.pptx,.txt,.zip" className="hidden" onChange={handleFileSelect} />
-                      <Button variant="ghost" size="sm" onClick={() => imageInputRef.current?.click()} type="button">
-                        <ImageIcon className="h-4 w-4 mr-1" /> 이미지
-                      </Button>
+                      <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
                       <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} type="button">
-                        <FileText className="h-4 w-4 mr-1" /> 파일
+                        <Plus className="h-4 w-4 mr-1" /> 첨부
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
@@ -244,7 +206,6 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
         </CardContent>
       </Card>
 
-      {/* Image Editor */}
       {editingFile?.preview && editingIndex !== null && (
         <ImageEditor
           open
