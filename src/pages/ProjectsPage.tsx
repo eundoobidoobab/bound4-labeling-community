@@ -337,85 +337,157 @@ export default function ProjectsPage() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
-            <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              {role === 'admin' ? '프로젝트를 생성해주세요' : '참여 중인 프로젝트가 없습니다'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project, i) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card
-                  className="cursor-pointer transition-shadow hover:shadow-md"
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{project.name}</CardTitle>
-                      <div className="flex items-center gap-1">
-                        {project.status === 'ARCHIVED' ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
-                        ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
-                        )}
-                        {role === 'admin' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
-                                <Pencil className="mr-2 h-4 w-4" /> 수정
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {project.status === 'ARCHIVED' ? (
-                                <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
-                                  <RotateCcw className="mr-2 h-4 w-4" /> 활성화
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
-                                >
-                                  <Archive className="mr-2 h-4 w-4" /> 보관
-                                </DropdownMenuItem>
+        ) : (() => {
+          const activeProjects = projects.filter(p => p.status === 'ACTIVE');
+          const archivedProjects = projects.filter(p => p.status === 'ARCHIVED');
+
+          return (
+            <>
+              {activeProjects.length === 0 && archivedProjects.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
+                  <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    {role === 'admin' ? '프로젝트를 생성해주세요' : '참여 중인 프로젝트가 없습니다'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {activeProjects.length === 0 && (
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 mb-8">
+                      <FolderOpen className="mb-3 h-10 w-10 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">활성 프로젝트가 없습니다</p>
+                    </div>
+                  )}
+                  {activeProjects.length > 0 && (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {activeProjects.map((project, i) => (
+                        <motion.div
+                          key={project.id}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                        >
+                          <Card
+                            className="cursor-pointer transition-shadow hover:shadow-md"
+                            onClick={() => navigate(`/projects/${project.id}`)}
+                          >
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">{project.name}</CardTitle>
+                                <div className="flex items-center gap-1">
+                                  {role === 'admin' && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
+                                          <Pencil className="mr-2 h-4 w-4" /> 수정
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                                        >
+                                          <Archive className="mr-2 h-4 w-4" /> 보관
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {project.description && (
+                                <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                               )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  {new Date(project.created_at).toLocaleDateString('ko-KR')}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3.5 w-3.5" />
+                                  {memberCounts[project.id] || 0}명
+                                </span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Archived projects section - admin only */}
+                  {role === 'admin' && archivedProjects.length > 0 && (
+                    <div className="mt-10">
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+                        <Archive className="h-4 w-4" /> 보관된 프로젝트 ({archivedProjects.length})
+                      </h3>
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {archivedProjects.map((project, i) => (
+                          <motion.div
+                            key={project.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                          >
+                            <Card
+                              className="cursor-pointer transition-shadow hover:shadow-md opacity-70"
+                              onClick={() => navigate(`/projects/${project.id}`)}
+                            >
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-base">{project.name}</CardTitle>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
+                                          <Pencil className="mr-2 h-4 w-4" /> 수정
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
+                                          <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {project.description && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                                )}
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    {new Date(project.created_at).toLocaleDateString('ko-KR')}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Users className="h-3.5 w-3.5" />
+                                    {memberCounts[project.id] || 0}명
+                                  </span>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ))}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {project.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        {new Date(project.created_at).toLocaleDateString('ko-KR')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" />
-                        {memberCounts[project.id] || 0}명
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                  )}
+                </>
+              )}
+            </>
+          );
+        })()}
       </main>
 
       {/* Edit project dialog */}
