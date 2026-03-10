@@ -62,7 +62,7 @@ export default function ProjectsPage() {
     let items = (data || []) as Project[];
     if (!error) {
       // Workers only see ACTIVE projects
-      if (!hasRole('admin')) {
+      if (role !== 'admin') {
         items = items.filter(p => p.status === 'ACTIVE');
       }
       setProjects(items);
