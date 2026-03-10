@@ -10,6 +10,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ProjectLayout from "./components/ProjectLayout";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
 import BoardPage from "./pages/BoardPage";
+import MembersPage from "./pages/MembersPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
