@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, CheckCircle2, X } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface Project {
@@ -41,6 +43,12 @@ export default function ProjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -139,12 +147,49 @@ export default function ProjectsPage() {
     toast({ title: '초대를 거절했습니다' });
     fetchProjects();
   };
+  const openEditDialog = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditProject(project);
+    setEditName(project.name);
+    setEditDesc(project.description || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProject || !editName.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from('projects').update({
+      name: editName.trim(),
+      description: editDesc.trim() || null,
+    } as any).eq('id', editProject.id);
+    setSaving(false);
+    if (error) {
+      toast({ title: '수정 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 수정되었습니다' });
+      setEditDialogOpen(false);
+      fetchProjects();
+    }
+  };
+
+  const handleArchiveProject = async () => {
+    if (!deleteProject) return;
+    const { error } = await supabase.from('projects').update({ status: 'ARCHIVED' }).eq('id', deleteProject.id);
+    if (error) {
+      toast({ title: '보관 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 보관되었습니다' });
+      fetchProjects();
+    }
+    setDeleteProject(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
-          <h1 className="text-lg font-bold text-foreground">바운드포 라벨링</h1>
+          <h1 className="text-lg font-bold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/projects')}>바운드포 라벨링</h1>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
@@ -290,11 +335,34 @@ export default function ProjectsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{project.name}</CardTitle>
-                      {project.status === 'ARCHIVED' ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {project.status === 'ARCHIVED' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
+                        )}
+                        {role === 'admin' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
+                                <Pencil className="mr-2 h-4 w-4" /> 수정
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                              >
+                                <Archive className="mr-2 h-4 w-4" /> 보관
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -318,6 +386,45 @@ export default function ProjectsPage() {
           </div>
         )}
       </main>
+
+      {/* Edit project dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>프로젝트 수정</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditProject} className="space-y-4">
+            <div className="space-y-2">
+              <Label>프로젝트 이름</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>프로젝트 설명</Label>
+              <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3} className="resize-none" />
+            </div>
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              저장
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive confirmation */}
+      <AlertDialog open={!!deleteProject} onOpenChange={(v) => !v && setDeleteProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로젝트 보관</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteProject?.name}" 프로젝트를 보관하시겠습니까? 보관된 프로젝트는 목록에서 숨겨지지만 데이터는 유지됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveProject}>보관</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
