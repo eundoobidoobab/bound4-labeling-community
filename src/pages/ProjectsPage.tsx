@@ -76,9 +76,13 @@ export default function ProjectsPage() {
         supabase.from('project_admins').select('project_id').in('project_id', ids),
       ]);
       const countMap: Record<string, number> = {};
-      ids.forEach(id => countMap[id] = 0);
-      (membersRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
-      (adminsRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
+      ids.forEach(id => {
+        const memberUserIds = new Set(
+          (membersRes.data || []).filter((r: any) => r.project_id === id).map((r: any) => r.worker_id)
+        );
+        (adminsRes.data || []).filter((r: any) => r.project_id === id).forEach((r: any) => memberUserIds.add(r.admin_id));
+        countMap[id] = memberUserIds.size;
+      });
       setMemberCounts(countMap);
     }
 
