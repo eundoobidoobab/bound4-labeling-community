@@ -72,8 +72,8 @@ export default function ProjectsPage() {
     if (items.length > 0) {
       const ids = items.map(p => p.id);
       const [membersRes, adminsRes] = await Promise.all([
-        supabase.from('project_memberships').select('project_id').eq('status', 'ACTIVE').in('project_id', ids),
-        supabase.from('project_admins').select('project_id').in('project_id', ids),
+        supabase.from('project_memberships').select('project_id, worker_id').eq('status', 'ACTIVE').in('project_id', ids),
+        supabase.from('project_admins').select('project_id, admin_id').in('project_id', ids),
       ]);
       const countMap: Record<string, number> = {};
       ids.forEach(id => {
