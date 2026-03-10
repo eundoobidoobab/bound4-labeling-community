@@ -132,8 +132,10 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user && role !== null) {
+      fetchProjects();
+    }
+  }, [user, role]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,11 +242,11 @@ export default function ProjectsPage() {
   const handleJoinProject = async () => {
     if (!joinDialogProject || !user) return;
     setJoining(true);
-    const { error } = await supabase.from('project_admins').insert({
+    const { error } = await supabase.from('project_admins').upsert({
       project_id: joinDialogProject.id,
       admin_id: user.id,
       custom_role: joinRole.trim() || null,
-    });
+    }, { onConflict: 'project_id,admin_id' });
     setJoining(false);
     if (error) {
       toast({ title: '참여 실패', description: error.message, variant: 'destructive' });
