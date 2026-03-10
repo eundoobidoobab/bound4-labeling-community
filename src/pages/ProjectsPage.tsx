@@ -43,6 +43,12 @@ export default function ProjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
