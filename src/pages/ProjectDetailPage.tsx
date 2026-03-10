@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { motion } from 'framer-motion';
 import { Loader2, Pin, Eye, MoreHorizontal } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
+import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
