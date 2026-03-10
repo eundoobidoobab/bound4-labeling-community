@@ -339,7 +339,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       {latest && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path)}>
+                          <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path, doc.title)}>
                             <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`)}>
