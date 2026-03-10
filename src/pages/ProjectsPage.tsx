@@ -255,6 +255,35 @@ export default function ProjectsPage() {
       fetchProjects();
     }
   };
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to delete account');
+      
+      await supabase.auth.signOut();
+      toast({ title: '회원 탈퇴가 완료되었습니다' });
+      navigate('/login');
+    } catch (err: any) {
+      toast({ title: '탈퇴 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setDeleteAccountOpen(false);
+    }
+  };
 
   const renderProjectCard = (project: Project, i: number, isArchived = false) => {
     const isJoined = joinedProjectIds.has(project.id);
