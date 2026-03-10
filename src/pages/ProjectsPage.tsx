@@ -185,6 +185,17 @@ export default function ProjectsPage() {
     setDeleteProject(null);
   };
 
+  const handleReactivateProject = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('projects').update({ status: 'ACTIVE' }).eq('id', projectId);
+    if (error) {
+      toast({ title: '활성화 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 다시 활성화되었습니다' });
+      fetchProjects();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
