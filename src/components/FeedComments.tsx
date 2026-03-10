@@ -70,8 +70,11 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const handleSubmit = async () => {
     if (!user || !body.trim()) return;
     setSubmitting(true);
-    const insertData: any = { [fkColumn]: parentId, author_id: user.id, body: body.trim() };
-    await supabase.from(tableName).insert(insertData);
+    if (type === 'post') {
+      await supabase.from('comments').insert({ post_id: parentId, author_id: user.id, body: body.trim() });
+    } else {
+      await supabase.from('notice_comments').insert({ notice_id: parentId, author_id: user.id, body: body.trim() });
+    }
     setBody('');
     setSubmitting(false);
     await fetchComments();
