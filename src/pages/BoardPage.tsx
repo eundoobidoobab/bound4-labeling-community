@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
 import GuideBoard from '@/components/GuideBoard';
+import AllocationBoard from '@/components/AllocationBoard';
 
 interface Board {
   id: string;
@@ -204,9 +205,7 @@ export default function BoardPage() {
 
       {/* Placeholder boards */}
       {isAllocation && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="text-muted-foreground">배분 관리 기능은 다음 단계에서 구현됩니다</p>
-        </div>
+        <AllocationBoard boardId={boardId!} projectId={project.id} />
       )}
       {isGuide && (
         <GuideBoard boardId={boardId!} projectId={project.id} />
