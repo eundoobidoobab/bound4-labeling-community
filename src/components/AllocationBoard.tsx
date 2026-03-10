@@ -544,7 +544,7 @@ function WorkerApplySection({
   if (myAssignment) {
     const isDone = myAssignment.status === 'DISTRIBUTED_DONE';
     return (
-      <Card className={isDone ? 'border-primary/30 bg-primary/5' : 'border-amber-500/30 bg-amber-50'}>
+      <Card className={isDone ? 'border-primary/30 bg-primary/5' : 'border-accent bg-accent/50'}>
         <CardContent className="py-4">
           <div className="flex items-center gap-3">
             {isDone ? (
