@@ -190,6 +190,7 @@ export default function MembersPage() {
     if (!inviteEmail.trim() || !projectId || !user) return;
     setInviting(true);
 
+    await expirePreviousInvitations(inviteEmail.trim());
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
