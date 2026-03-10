@@ -214,7 +214,10 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   setMode(mode === 'login' ? 'signup' : 'login');
+                  setEmail('');
+                  setPassword('');
                   setConfirmPassword('');
+                  setDisplayName('');
                 }}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
