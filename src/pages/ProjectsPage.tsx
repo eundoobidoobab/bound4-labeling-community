@@ -76,12 +76,16 @@ export default function ProjectsPage() {
       setMemberCounts(countMap);
     }
 
-    // Fetch pending invitations for current user
-    const { data: invData } = await supabase
+    // Fetch pending invitations for current user's email
+    const { data: profileData } = await supabase.from('profiles').select('email').eq('id', user!.id).single();
+    const userEmail = profileData?.email?.toLowerCase();
+
+    const { data: invData } = userEmail ? await supabase
       .from('project_invitations')
       .select('*')
       .eq('status', 'PENDING')
-      .gt('expires_at', new Date().toISOString());
+      .eq('email', userEmail)
+      .gt('expires_at', new Date().toISOString()) : { data: null };
 
     if (invData && invData.length > 0) {
       // Fetch project names for invitations
