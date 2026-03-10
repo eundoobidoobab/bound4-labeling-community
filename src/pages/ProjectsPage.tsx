@@ -335,11 +335,34 @@ export default function ProjectsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{project.name}</CardTitle>
-                      {project.status === 'ARCHIVED' ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {project.status === 'ARCHIVED' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
+                        )}
+                        {role === 'admin' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => openEditDialog(project, e as any)}>
+                                <Pencil className="mr-2 h-4 w-4" /> 수정
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                              >
+                                <Archive className="mr-2 h-4 w-4" /> 보관
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -363,6 +386,45 @@ export default function ProjectsPage() {
           </div>
         )}
       </main>
+
+      {/* Edit project dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>프로젝트 수정</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditProject} className="space-y-4">
+            <div className="space-y-2">
+              <Label>프로젝트 이름</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>프로젝트 설명</Label>
+              <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3} className="resize-none" />
+            </div>
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              저장
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive confirmation */}
+      <AlertDialog open={!!deleteProject} onOpenChange={(v) => !v && setDeleteProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로젝트 보관</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteProject?.name}" 프로젝트를 보관하시겠습니까? 보관된 프로젝트는 목록에서 숨겨지지만 데이터는 유지됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveProject}>보관</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
