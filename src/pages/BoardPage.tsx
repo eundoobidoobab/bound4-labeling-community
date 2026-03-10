@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
 import { Loader2, MessageSquare, Pin, MoreHorizontal, Eye } from 'lucide-react';
+import FeedComments from '@/components/FeedComments';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -266,6 +267,7 @@ export default function BoardPage() {
                     <CardContent className="pl-16">
                       <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
                       <FeedAttachments attachments={noticeAttachments[notice.id] || []} />
+                      <FeedComments type="notice" parentId={notice.id} />
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -307,6 +309,7 @@ export default function BoardPage() {
                     <CardContent className="pl-16">
                       <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
                       <FeedAttachments attachments={postAttachments[post.id] || []} />
+                      <FeedComments type="post" parentId={post.id} />
                     </CardContent>
                   </Card>
                 </motion.div>

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
 import { Loader2, Pin, Eye, MoreHorizontal } from 'lucide-react';
+import FeedComments from '@/components/FeedComments';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
@@ -248,6 +249,7 @@ export default function ProjectDetailPage() {
                       <CardContent className="pl-16">
                         <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
                         <FeedAttachments attachments={attachments[notice.id] || []} />
+                        <FeedComments type="notice" parentId={notice.id} />
                       </CardContent>
                     </Card>
                   </motion.div>
