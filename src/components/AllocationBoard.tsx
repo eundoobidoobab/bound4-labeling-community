@@ -660,30 +660,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         </DialogContent>
       </Dialog>
 
-      {/* Worker apply dialog with quantity */}
-      <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyCallId(null); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>작업 신청</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>희망 수량 (선택)</Label>
-              <Input
-                type="number"
-                min="1"
-                value={applyQuantity}
-                onChange={e => setApplyQuantity(e.target.value)}
-                placeholder="배분 받고 싶은 수량을 입력하세요"
-              />
-              <p className="text-xs text-muted-foreground">입력하지 않으면 관리자가 수량을 결정합니다</p>
-            </div>
-            <Button className="w-full" onClick={handleApply}>
-              <UserCheck className="mr-2 h-4 w-4" /> 신청하기
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {applyDialog}
     </div>
   );
 }
