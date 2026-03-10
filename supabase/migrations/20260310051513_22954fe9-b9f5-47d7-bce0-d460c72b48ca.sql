@@ -1,0 +1,1 @@
+ALTER TABLE public.project_admins ADD COLUMN custom_role text;
