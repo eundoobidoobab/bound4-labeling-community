@@ -559,7 +559,7 @@ function WorkerApplySection({
               </>
             ) : (
               <>
-                <Package className="h-5 w-5 text-amber-600" />
+                <Package className="h-5 w-5 text-accent-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">배정되었습니다</p>
                   <p className="text-xs text-muted-foreground">배분 완료를 기다리는 중입니다</p>
