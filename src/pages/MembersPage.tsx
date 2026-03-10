@@ -277,6 +277,8 @@ export default function MembersPage() {
     })),
   ];
 
+  const isCurrentUserAdmin = admins.some(a => a.admin_id === user?.id);
+
   // Workers only see admins
   const visibleMembers = isCurrentUserAdmin ? allMembers : allMembers.filter(m => m.isAdmin);
 
