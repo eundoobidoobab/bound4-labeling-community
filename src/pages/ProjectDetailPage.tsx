@@ -78,9 +78,8 @@ export default function ProjectDetailPage() {
   }, [user]);
 
   const fetchProfiles = async (ids: string[]) => {
-    const missing = ids.filter(id => !profiles[id]);
-    if (missing.length === 0) return;
-    const { data } = await supabase.from('profiles').select('id, display_name, email').in('id', missing);
+    if (ids.length === 0) return;
+    const { data } = await supabase.from('profiles').select('id, display_name, email').in('id', ids);
     if (data) setProfiles(prev => { const n = { ...prev }; data.forEach((p: any) => { n[p.id] = p; }); return n; });
   };
 
