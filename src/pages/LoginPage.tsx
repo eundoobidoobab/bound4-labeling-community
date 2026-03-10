@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  if (user) {
-    navigate('/projects', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/projects', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
