@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
