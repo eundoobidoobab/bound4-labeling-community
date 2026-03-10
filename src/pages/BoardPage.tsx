@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
+import GuideBoard from '@/components/GuideBoard';
 
 interface Board {
   id: string;
@@ -208,9 +209,7 @@ export default function BoardPage() {
         </div>
       )}
       {isGuide && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="text-muted-foreground">가이드 관리 기능은 다음 단계에서 구현됩니다</p>
-        </div>
+        <GuideBoard boardId={boardId!} projectId={project.id} />
       )}
 
       {/* Notice feed */}
