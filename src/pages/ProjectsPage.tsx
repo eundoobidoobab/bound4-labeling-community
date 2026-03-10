@@ -519,7 +519,7 @@ export default function ProjectsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>프로젝트 보관</AlertDialogTitle>
             <AlertDialogDescription>
-              "{deleteProject?.name}" 프로젝트를 보관하시겠습니까? 보관된 프로젝트는 목록에서 숨겨지지만 데이터는 유지됩니다.
+              "{deleteProject?.name}" 프로젝트를 보관하시겠습니까? 작업자들은 보관된 프로젝트에 접근할 수 없으며, 관리자만 열람 및 활성화가 가능합니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
