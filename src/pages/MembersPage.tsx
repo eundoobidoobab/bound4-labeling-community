@@ -586,7 +586,6 @@ export default function MembersPage() {
     </div>
   );
 }
-            <Button>
               <UserPlus className="mr-2 h-4 w-4" />
               초대하기
             </Button>
