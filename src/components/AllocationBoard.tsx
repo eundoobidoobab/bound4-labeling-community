@@ -563,6 +563,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
             )}
           </>
         )}
+        {applyDialog}
       </div>
     );
   }
