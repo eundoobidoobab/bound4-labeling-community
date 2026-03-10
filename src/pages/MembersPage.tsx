@@ -611,6 +611,17 @@ export default function MembersPage() {
                     </p>
                   </div>
                   <Badge variant="outline" className="text-xs text-muted-foreground">대기 중</Badge>
+                  {isCurrentUserAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      title="초대 취소"
+                      onClick={() => handleCancelInvitation(inv.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             ))}
