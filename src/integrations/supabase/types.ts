@@ -887,6 +887,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { _invitation_id: string }
+        Returns: undefined
+      }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
