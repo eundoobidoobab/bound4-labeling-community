@@ -147,8 +147,45 @@ export default function ProjectsPage() {
     toast({ title: '초대를 거절했습니다' });
     fetchProjects();
   };
+  const openEditDialog = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditProject(project);
+    setEditName(project.name);
+    setEditDesc(project.description || '');
+    setEditDialogOpen(true);
+  };
 
-  return (
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProject || !editName.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from('projects').update({
+      name: editName.trim(),
+      description: editDesc.trim() || null,
+    } as any).eq('id', editProject.id);
+    setSaving(false);
+    if (error) {
+      toast({ title: '수정 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 수정되었습니다' });
+      setEditDialogOpen(false);
+      fetchProjects();
+    }
+  };
+
+  const handleArchiveProject = async () => {
+    if (!deleteProject) return;
+    const { error } = await supabase.from('projects').update({ status: 'ARCHIVED' }).eq('id', deleteProject.id);
+    if (error) {
+      toast({ title: '보관 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 보관되었습니다' });
+      fetchProjects();
+    }
+    setDeleteProject(null);
+  };
+
+
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
