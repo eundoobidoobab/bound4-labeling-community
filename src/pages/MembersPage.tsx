@@ -149,9 +149,20 @@ export default function MembersPage() {
     setSearching(false);
   }, [admins, members, invitations]);
 
+  const expirePreviousInvitations = async (email: string) => {
+    await supabase
+      .from('project_invitations')
+      .update({ status: 'EXPIRED' })
+      .eq('project_id', projectId!)
+      .eq('email', email.toLowerCase())
+      .eq('status', 'PENDING');
+  };
+
   const handleInviteUser = async (targetUser: SearchUser) => {
     if (!projectId || !user) return;
     setInvitingUserId(targetUser.id);
+
+    await expirePreviousInvitations(targetUser.email);
 
     const token = crypto.randomUUID();
     const expiresAt = new Date();
@@ -179,6 +190,7 @@ export default function MembersPage() {
     if (!inviteEmail.trim() || !projectId || !user) return;
     setInviting(true);
 
+    await expirePreviousInvitations(inviteEmail.trim());
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
