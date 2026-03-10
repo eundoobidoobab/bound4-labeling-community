@@ -19,6 +19,16 @@ import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Megaphone,
   BookOpen,
   HelpCircle,
@@ -30,7 +40,9 @@ import {
   ArrowLeft,
   Bell,
   Loader2,
+  LogOut,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Board {
   id: string;
@@ -55,13 +67,14 @@ const boardIcons: Record<string, React.ComponentType<{ className?: string }>> = 
   CUSTOM: MessageSquare,
 };
 
-function ProjectSidebar({ project, boards }: { project: Project; boards: Board[] }) {
+function ProjectSidebar({ project, boards, onLeave }: { project: Project; boards: Board[]; onLeave: () => void }) {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const isProjectHome = location.pathname === `/projects/${id}`;
+  const isAdmin = role === 'admin';
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -75,13 +88,13 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{project.name}</p>
               <p className="text-xs text-muted-foreground">
-                {role === 'admin' ? '관리자' : '작업자'}
+                {isAdmin ? '관리자' : '작업자'}
               </p>
             </div>
           )}
         </div>
 
-        {/* Board navigation - Notice is project home */}
+        {/* Board navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">
             게시판
@@ -90,7 +103,6 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
             <SidebarMenu>
               {boards.map((board) => {
                 const Icon = boardIcons[board.type] || MessageSquare;
-                // Notice board links to project home
                 const boardPath = board.type === 'NOTICE'
                   ? `/projects/${id}`
                   : `/projects/${id}/boards/${board.id}`;
@@ -151,19 +163,31 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {role === 'admin' && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
-                    <NavLink
-                      to={`/projects/${id}/settings`}
-                      className="hover:bg-muted/50"
-                      activeClassName="bg-primary/10 text-primary font-medium"
+              {isAdmin && (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
+                      <NavLink
+                        to={`/projects/${id}/settings`}
+                        className="hover:bg-muted/50"
+                        activeClassName="bg-primary/10 text-primary font-medium"
+                      >
+                        <Settings className="h-4 w-4" />
+                        {!collapsed && <span>설정</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={onLeave}
+                      className="hover:bg-destructive/10 text-destructive hover:text-destructive cursor-pointer"
                     >
-                      <Settings className="h-4 w-4" />
-                      {!collapsed && <span>설정</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                      <LogOut className="h-4 w-4" />
+                      {!collapsed && <span>프로젝트 나가기</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -176,9 +200,12 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
 export default function ProjectLayout() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, role } = useAuth();
+  const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -193,6 +220,23 @@ export default function ProjectLayout() {
     };
     fetchData();
   }, [id]);
+
+  const handleLeaveProject = async () => {
+    if (!id || !user) return;
+    const { error } = await supabase
+      .from('project_admins')
+      .delete()
+      .eq('project_id', id)
+      .eq('admin_id', user.id);
+
+    if (error) {
+      toast({ title: '나가기 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트에서 나갔습니다' });
+      navigate('/projects');
+    }
+    setLeaveDialogOpen(false);
+  };
 
   if (loading) {
     return (
@@ -213,7 +257,7 @@ export default function ProjectLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <ProjectSidebar project={project} boards={boards} />
+        <ProjectSidebar project={project} boards={boards} onLeave={() => setLeaveDialogOpen(true)} />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center gap-2 border-b border-border bg-card px-4">
             <SidebarTrigger />
@@ -231,6 +275,22 @@ export default function ProjectLayout() {
           </main>
         </div>
       </div>
+
+      {/* Leave project confirmation */}
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로젝트 나가기</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{project.name}" 프로젝트에서 나가시겠습니까? 나간 후에도 프로젝트 목록에서 열람할 수 있으며, 다시 참여할 수 있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLeaveProject}>나가기</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }
