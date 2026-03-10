@@ -551,7 +551,18 @@ export default function MembersPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
+                {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="메시지 보내기"
+                    onClick={() => handleStartDm(m.userId)}
+                  >
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
                 {!m.isAdmin && isCurrentUserAdmin && (
                   <Button
                     variant="ghost"
