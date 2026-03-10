@@ -132,8 +132,10 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user && role !== null) {
+      fetchProjects();
+    }
+  }, [user, role]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
