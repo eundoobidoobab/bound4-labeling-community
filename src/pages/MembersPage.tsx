@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
@@ -54,8 +54,9 @@ type RoleFilter = 'all' | 'admin' | 'worker';
 export default function MembersPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -276,13 +277,48 @@ export default function MembersPage() {
     })),
   ];
 
-  const filteredMembers = roleFilter === 'all'
-    ? allMembers
-    : roleFilter === 'admin'
-      ? allMembers.filter(m => m.isAdmin)
-      : allMembers.filter(m => !m.isAdmin);
-
   const isCurrentUserAdmin = admins.some(a => a.admin_id === user?.id);
+
+  // Workers only see admins
+  const visibleMembers = isCurrentUserAdmin ? allMembers : allMembers.filter(m => m.isAdmin);
+
+  const filteredMembers = isCurrentUserAdmin
+    ? (roleFilter === 'all'
+        ? visibleMembers
+        : roleFilter === 'admin'
+          ? visibleMembers.filter(m => m.isAdmin)
+          : visibleMembers.filter(m => !m.isAdmin))
+    : visibleMembers;
+
+  const handleStartDm = async (adminId: string) => {
+    if (!projectId || !user) return;
+    // Check for existing thread
+    const { data: existing } = await supabase
+      .from('dm_threads')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('admin_id', adminId)
+      .eq('worker_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      navigate(`/projects/${projectId}/dm?thread=${existing.id}`);
+      return;
+    }
+
+    // Create new thread
+    const { data: newThread, error } = await supabase
+      .from('dm_threads')
+      .insert({ project_id: projectId, admin_id: adminId, worker_id: user.id })
+      .select('id')
+      .single();
+
+    if (error) {
+      toast({ title: 'DM 생성 실패', description: error.message, variant: 'destructive' });
+    } else if (newThread) {
+      navigate(`/projects/${projectId}/dm?thread=${newThread.id}`);
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -402,23 +438,25 @@ export default function MembersPage() {
       {/* Tab header */}
       <div className="mb-4 flex items-center justify-between border-b border-border">
         <button className="px-4 py-2.5 text-sm font-medium border-b-2 border-primary text-foreground -mb-px">
-          전체 구성원 {allMembers.length}
+          {isCurrentUserAdmin ? `전체 구성원 ${allMembers.length}` : `관리자 ${filteredMembers.length}`}
         </button>
       </div>
 
-      {/* Role filter */}
-      <div className="mb-4">
-        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
-          <SelectTrigger className="w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="admin">관리자</SelectItem>
-            <SelectItem value="worker">작업자</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Role filter - admin only */}
+      {isCurrentUserAdmin && (
+        <div className="mb-4">
+          <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="admin">관리자</SelectItem>
+              <SelectItem value="worker">작업자</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Members table */}
       <div className="border border-border rounded-lg overflow-hidden">
@@ -513,7 +551,18 @@ export default function MembersPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
+                {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="메시지 보내기"
+                    onClick={() => handleStartDm(m.userId)}
+                  >
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
                 {!m.isAdmin && isCurrentUserAdmin && (
                   <Button
                     variant="ghost"
