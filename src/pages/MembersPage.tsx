@@ -444,17 +444,19 @@ export default function MembersPage() {
 
       {/* Role filter - admin only */}
       {isCurrentUserAdmin && (
-      <div className="mb-4">
-        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="admin">관리자</SelectItem>
-            <SelectItem value="worker">작업자</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="mb-4">
+          <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="admin">관리자</SelectItem>
+              <SelectItem value="worker">작업자</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Members table */}
       <div className="border border-border rounded-lg overflow-hidden">
