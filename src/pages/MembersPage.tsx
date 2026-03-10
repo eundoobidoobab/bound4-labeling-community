@@ -586,8 +586,6 @@ export default function MembersPage() {
     </div>
   );
 }
-        }}>
-          <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
               초대하기
