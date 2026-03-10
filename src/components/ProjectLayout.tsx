@@ -138,34 +138,32 @@ function ProjectSidebar({ project, boards }: { project: Project; boards: Board[]
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {role === 'admin' && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/members`}>
-                      <NavLink
-                        to={`/projects/${id}/members`}
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
-                        <Users className="h-4 w-4" />
-                        {!collapsed && <span>팀 멤버</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/members`}>
+                  <NavLink
+                    to={`/projects/${id}/members`}
+                    className="hover:bg-muted/50"
+                    activeClassName="bg-primary/10 text-primary font-medium"
+                  >
+                    <Users className="h-4 w-4" />
+                    {!collapsed && <span>팀 멤버</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
-                      <NavLink
-                        to={`/projects/${id}/settings`}
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
-                        <Settings className="h-4 w-4" />
-                        {!collapsed && <span>설정</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
+              {role === 'admin' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
+                    <NavLink
+                      to={`/projects/${id}/settings`}
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-primary/10 text-primary font-medium"
+                    >
+                      <Settings className="h-4 w-4" />
+                      {!collapsed && <span>설정</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
