@@ -5,15 +5,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
-import { Plus, FolderOpen, Archive, Loader2, LogOut, Bell } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Project {
   id: string;
   name: string;
+  description: string | null;
   status: string;
   created_at: string;
 }
@@ -21,8 +23,10 @@ interface Project {
 export default function ProjectsPage() {
   const { user, role, signOut } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDesc, setNewProjectDesc] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
@@ -35,7 +39,28 @@ export default function ProjectsPage() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) setProjects(data as Project[]);
+    const items = (data || []) as Project[];
+    if (!error) setProjects(items);
+
+    // Fetch member counts
+    if (items.length > 0) {
+      const ids = items.map(p => p.id);
+      const [membersRes, adminsRes] = await Promise.all([
+        supabase.from('project_memberships').select('project_id').eq('status', 'ACTIVE').in('project_id', ids),
+        supabase.from('project_admins').select('project_id').in('project_id', ids),
+      ]);
+      const counts: Record<string, Set<string>> = {};
+      ids.forEach(id => counts[id] = new Set());
+      (membersRes.data || []).forEach((r: any) => counts[r.project_id]?.add('m_' + Math.random()));
+      (adminsRes.data || []).forEach((r: any) => counts[r.project_id]?.add('a_' + Math.random()));
+      // Actually count properly
+      const countMap: Record<string, number> = {};
+      ids.forEach(id => countMap[id] = 0);
+      (membersRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
+      (adminsRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
+      setMemberCounts(countMap);
+    }
+
     setLoading(false);
   };
 
@@ -50,13 +75,18 @@ export default function ProjectsPage() {
 
     const { error } = await supabase
       .from('projects')
-      .insert({ name: newProjectName.trim(), created_by: user.id });
+      .insert({
+        name: newProjectName.trim(),
+        description: newProjectDesc.trim() || null,
+        created_by: user.id,
+      } as any);
 
     setCreating(false);
     if (error) {
       toast({ title: '프로젝트 생성 실패', description: error.message, variant: 'destructive' });
     } else {
       setNewProjectName('');
+      setNewProjectDesc('');
       setDialogOpen(false);
       toast({ title: '프로젝트가 생성되었습니다' });
       fetchProjects();
@@ -65,7 +95,6 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
           <h1 className="text-lg font-bold text-foreground">바운드포 라벨링</h1>
@@ -108,6 +137,24 @@ export default function ProjectsPage() {
                       required
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>프로젝트 설명</Label>
+                    <Textarea
+                      value={newProjectDesc}
+                      onChange={(e) => setNewProjectDesc(e.target.value)}
+                      placeholder="프로젝트에 대한 간단한 설명을 입력하세요"
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>생성일자</Label>
+                    <Input
+                      value={new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                      disabled
+                      className="text-muted-foreground"
+                    />
+                  </div>
                   <Button type="submit" className="w-full" disabled={creating}>
                     {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     생성
@@ -146,16 +193,26 @@ export default function ProjectsPage() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{project.name}</CardTitle>
                       {project.status === 'ARCHIVED' ? (
-                        <span className="status-archived">보관됨</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">보관됨</span>
                       ) : (
-                        <span className="status-active">활성</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">활성</span>
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(project.created_at).toLocaleDateString('ko-KR')}
-                    </p>
+                  <CardContent className="space-y-2">
+                    {project.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {new Date(project.created_at).toLocaleDateString('ko-KR')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5" />
+                        {memberCounts[project.id] || 0}명
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
