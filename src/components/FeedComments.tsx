@@ -4,8 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, MessageCircle, Send } from 'lucide-react';
+import { Loader2, Send, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const PREVIEW_COUNT = 3;
 
 interface Comment {
   id: string;
@@ -21,7 +23,6 @@ interface Profile {
 }
 
 interface FeedCommentsProps {
-  /** 'post' uses comments table, 'notice' uses notice_comments table */
   type: 'post' | 'notice';
   parentId: string;
 }
@@ -30,10 +31,13 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchComments();
+  }, [parentId, type]);
 
   const fetchComments = async () => {
     let items: Comment[] = [];
@@ -45,9 +49,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
       items = (data || []) as Comment[];
     }
     setComments(items);
-    setLoaded(true);
 
-    // Fetch profiles
     const authorIds = [...new Set(items.map(c => c.author_id))];
     if (user) authorIds.push(user.id);
     const missing = authorIds.filter(id => !profiles[id]);
@@ -62,10 +64,6 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
       }
     }
   };
-
-  useEffect(() => {
-    if (expanded && !loaded) fetchComments();
-  }, [expanded]);
 
   const handleSubmit = async () => {
     if (!user || !body.trim()) return;
@@ -87,85 +85,87 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     }
   };
 
-  return (
-    <div className="mt-3">
-      <button
-        onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <MessageCircle className="h-3.5 w-3.5" />
-        {loaded ? `댓글 ${comments.length}개` : '댓글'}
-      </button>
+  const hasHidden = comments.length > PREVIEW_COUNT;
+  const hiddenCount = comments.length - PREVIEW_COUNT;
+  const visibleComments = showAll ? comments : comments.slice(-PREVIEW_COUNT);
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3 space-y-3">
-              {/* Existing comments */}
-              {comments.map((comment) => {
-                const author = profiles[comment.author_id];
-                return (
-                  <div key={comment.id} className="flex gap-2">
-                    <Avatar className="h-7 w-7 shrink-0">
-                      <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
-                        {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="rounded-lg bg-muted/40 px-3 py-2">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-xs font-medium text-foreground">
-                            {author?.display_name || author?.email || '알 수 없음'}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(comment.created_at).toLocaleDateString('ko-KR')}
-                          </span>
-                        </div>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{comment.body}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Comment input */}
-              {user && (
-                <div className="flex gap-2">
-                  <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {(profiles[user.id]?.display_name || profiles[user.id]?.email || user.email || '?').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 flex gap-2">
-                    <Textarea
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="댓글을 입력하세요..."
-                      rows={1}
-                      className="resize-none min-h-[36px] text-sm py-2"
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-9 w-9 shrink-0"
-                      onClick={handleSubmit}
-                      disabled={submitting || !body.trim()}
-                    >
-                      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-              )}
+  const renderComment = (comment: Comment) => {
+    const author = profiles[comment.author_id];
+    return (
+      <div key={comment.id} className="flex gap-2">
+        <Avatar className="h-7 w-7 shrink-0">
+          <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
+            {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="rounded-lg bg-muted/40 px-3 py-2">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-xs font-medium text-foreground">
+                {author?.display_name || author?.email || '알 수 없음'}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(comment.created_at).toLocaleDateString('ko-KR')}
+              </span>
             </div>
-          </motion.div>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{comment.body}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      {/* Show more button */}
+      {hasHidden && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+          이전 댓글 {hiddenCount}개 더보기
+        </button>
+      )}
+
+      {/* Comments */}
+      <AnimatePresence initial={false}>
+        {visibleComments.length > 0 && (
+          <div className="space-y-2.5 mb-3">
+            {visibleComments.map(renderComment)}
+          </div>
         )}
       </AnimatePresence>
+
+      {/* Comment input - always visible */}
+      {user && (
+        <div className="flex gap-2">
+          <Avatar className="h-7 w-7 shrink-0">
+            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+              {(profiles[user.id]?.display_name || profiles[user.id]?.email || user.email || '?').charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 flex gap-2">
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="댓글을 입력하세요..."
+              rows={1}
+              className="resize-none min-h-[36px] text-sm py-2"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0"
+              onClick={handleSubmit}
+              disabled={submitting || !body.trim()}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
