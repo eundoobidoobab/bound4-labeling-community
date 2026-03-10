@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -60,11 +59,14 @@ export default function LoginPage() {
     if (error) {
       toast({ title: '회원가입 실패', description: error.message, variant: 'destructive' });
     } else {
-      // If user already exists but not confirmed, resend confirmation
       if (data?.user?.identities?.length === 0) {
-        // User already exists - try to resend confirmation
-        await supabase.auth.resend({ type: 'signup', email });
-        toast({ title: '인증 메일 재발송', description: '이미 가입된 이메일입니다. 인증 메일을 다시 발송했습니다.' });
+        // User already exists
+        toast({ title: '이미 가입된 이메일입니다', description: '로그인 페이지에서 로그인해주세요.', variant: 'destructive' });
+        setMode('login');
+        setPassword('');
+        setConfirmPassword('');
+        setDisplayName('');
+        return;
       }
       setSignUpSuccess(true);
     }
