@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UserPlus, Mail, Clock, CheckCircle2, XCircle, Users, Shield } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Clock, CheckCircle2, XCircle, Users, Shield, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
@@ -40,6 +41,12 @@ interface Admin {
   email: string;
 }
 
+interface SearchUser {
+  id: string;
+  display_name: string | null;
+  email: string;
+}
+
 export default function MembersPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
@@ -55,6 +62,12 @@ export default function MembersPage() {
   const [inviting, setInviting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // User search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchAll();
   }, [projectId]);
@@ -69,7 +82,6 @@ export default function MembersPage() {
       supabase.from('project_invitations').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
     ]);
 
-    // Fetch profiles for members and admins
     const workerIds = (membersRes.data || []).map((m: any) => m.worker_id);
     const adminIds = (adminsRes.data || []).map((a: any) => a.admin_id);
     const allIds = [...new Set([...workerIds, ...adminIds])];
@@ -96,7 +108,68 @@ export default function MembersPage() {
     setLoading(false);
   };
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleSearchUsers = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+
+    // Search profiles by email or display_name
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, display_name, email')
+      .or(`email.ilike.%${query.trim()}%,display_name.ilike.%${query.trim()}%`)
+      .limit(20);
+
+    if (data) {
+      // Filter out users already in the project (admins + active members)
+      const existingIds = new Set([
+        ...admins.map(a => a.admin_id),
+        ...members.map(m => m.worker_id),
+      ]);
+      // Also filter out users with pending invitations
+      const pendingEmails = new Set(
+        invitations
+          .filter(inv => inv.status === 'PENDING' && new Date(inv.expires_at) > new Date())
+          .map(inv => inv.email.toLowerCase())
+      );
+
+      setSearchResults(
+        data.filter((u: any) => !existingIds.has(u.id) && !pendingEmails.has(u.email.toLowerCase()))
+      );
+    }
+    setSearching(false);
+  }, [admins, members, invitations]);
+
+  const handleInviteUser = async (targetUser: SearchUser) => {
+    if (!projectId || !user) return;
+    setInvitingUserId(targetUser.id);
+
+    const token = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const { error } = await supabase.from('project_invitations').insert({
+      project_id: projectId,
+      email: targetUser.email.toLowerCase(),
+      token,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    setInvitingUserId(null);
+    if (error) {
+      toast({ title: '초대 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '초대가 전송되었습니다', description: `${targetUser.display_name || targetUser.email}에게 초대를 보냈습니다.` });
+      // Remove from search results
+      setSearchResults(prev => prev.filter(u => u.id !== targetUser.id));
+      fetchAll();
+    }
+  };
+
+  const handleInviteByEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail.trim() || !projectId || !user) return;
     setInviting(true);
@@ -146,36 +219,121 @@ export default function MembersPage() {
           <h1 className="text-2xl font-bold text-foreground">팀 멤버</h1>
           <p className="text-sm text-muted-foreground mt-1">프로젝트 참여자를 관리하세요</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setSearchQuery('');
+            setSearchResults([]);
+            setInviteEmail('');
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
               초대하기
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>작업자 초대</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleInvite} className="space-y-4">
-              <div className="space-y-2">
-                <Label>이메일 주소</Label>
-                <Input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="worker@example.com"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  초대받은 사용자가 해당 이메일로 가입 후 프로젝트 목록에서 초대를 수락할 수 있습니다.
-                </p>
-              </div>
-              <Button type="submit" className="w-full" disabled={inviting}>
-                {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                초대 보내기
-              </Button>
-            </form>
+            <Tabs defaultValue="search" className="mt-2">
+              <TabsList className="w-full">
+                <TabsTrigger value="search" className="flex-1">
+                  <Search className="mr-2 h-4 w-4" />
+                  사용자 검색
+                </TabsTrigger>
+                <TabsTrigger value="email" className="flex-1">
+                  <Mail className="mr-2 h-4 w-4" />
+                  이메일 초대
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="search" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>이름 또는 이메일로 검색</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => handleSearchUsers(e.target.value)}
+                      placeholder="이름 또는 이메일 입력..."
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    플랫폼에 가입된 사용자를 검색하여 프로젝트에 초대할 수 있습니다.
+                  </p>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {searching && (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                    <div className="text-center py-6 text-sm text-muted-foreground">
+                      검색 결과가 없습니다
+                    </div>
+                  )}
+                  {searchResults.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                          {(u.display_name || u.email).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {u.display_name || u.email}
+                        </p>
+                        {u.display_name && (
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleInviteUser(u)}
+                        disabled={invitingUserId === u.id}
+                      >
+                        {invitingUserId === u.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          '초대'
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="email" className="space-y-4 mt-4">
+                <form onSubmit={handleInviteByEmail} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>이메일 주소</Label>
+                    <Input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="worker@example.com"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      아직 가입하지 않은 사용자도 이메일로 초대할 수 있습니다. 해당 이메일로 가입 후 초대를 수락할 수 있습니다.
+                    </p>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={inviting}>
+                    {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    초대 보내기
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
