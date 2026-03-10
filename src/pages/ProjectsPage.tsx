@@ -369,12 +369,22 @@ export default function ProjectsPage() {
             <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">
-              {role === 'admin' ? '관리자' : '작업자'}
-            </span>
-            <Button variant="ghost" size="icon" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <span className="text-sm">{role === 'admin' ? '관리자' : '작업자'}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="mr-2 h-4 w-4" /> 로그아웃
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={() => setDeleteAccountOpen(true)}>
+                  <UserX className="mr-2 h-4 w-4" /> 회원 탈퇴
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
