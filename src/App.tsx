@@ -10,6 +10,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ProjectLayout from "./components/ProjectLayout";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
 import BoardPage from "./pages/BoardPage";
+import MembersPage from "./pages/MembersPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
@@ -32,7 +33,7 @@ const App = () => (
               <Route index element={<ProjectDetailPage />} />
               <Route path="boards/:boardId" element={<BoardPage />} />
               <Route path="dm" element={<div className="p-8 text-center text-muted-foreground">DM 기능은 다음 단계에서 구현됩니다</div>} />
-              <Route path="members" element={<div className="p-8 text-center text-muted-foreground">팀 멤버 관리는 다음 단계에서 구현됩니다</div>} />
+              <Route path="members" element={<MembersPage />} />
               <Route path="settings" element={<div className="p-8 text-center text-muted-foreground">프로젝트 설정은 다음 단계에서 구현됩니다</div>} />
               <Route path="admin/allocation" element={<div className="p-8 text-center text-muted-foreground">배분 관리는 다음 단계에서 구현됩니다</div>} />
             </Route>

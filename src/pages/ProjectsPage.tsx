@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { motion } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, CheckCircle2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Project {
@@ -20,15 +20,27 @@ interface Project {
   created_at: string;
 }
 
+interface Invitation {
+  id: string;
+  project_id: string;
+  email: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  project_name?: string;
+}
+
 export default function ProjectsPage() {
   const { user, role, signOut } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,16 +61,33 @@ export default function ProjectsPage() {
         supabase.from('project_memberships').select('project_id').eq('status', 'ACTIVE').in('project_id', ids),
         supabase.from('project_admins').select('project_id').in('project_id', ids),
       ]);
-      const counts: Record<string, Set<string>> = {};
-      ids.forEach(id => counts[id] = new Set());
-      (membersRes.data || []).forEach((r: any) => counts[r.project_id]?.add('m_' + Math.random()));
-      (adminsRes.data || []).forEach((r: any) => counts[r.project_id]?.add('a_' + Math.random()));
-      // Actually count properly
       const countMap: Record<string, number> = {};
       ids.forEach(id => countMap[id] = 0);
       (membersRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
       (adminsRes.data || []).forEach((r: any) => { countMap[r.project_id] = (countMap[r.project_id] || 0) + 1; });
       setMemberCounts(countMap);
+    }
+
+    // Fetch pending invitations for current user
+    const { data: invData } = await supabase
+      .from('project_invitations')
+      .select('*')
+      .eq('status', 'PENDING')
+      .gt('expires_at', new Date().toISOString());
+
+    if (invData && invData.length > 0) {
+      // Fetch project names for invitations
+      const projectIds = [...new Set(invData.map((inv: any) => inv.project_id))];
+      const { data: projData } = await supabase.from('projects').select('id, name').in('id', projectIds);
+      const projMap: Record<string, string> = {};
+      (projData || []).forEach((p: any) => { projMap[p.id] = p.name; });
+
+      setInvitations(invData.map((inv: any) => ({
+        ...inv,
+        project_name: projMap[inv.project_id] || '알 수 없는 프로젝트',
+      })));
+    } else {
+      setInvitations([]);
     }
 
     setLoading(false);
@@ -93,6 +122,24 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleAcceptInvitation = async (invitationId: string) => {
+    setAcceptingId(invitationId);
+    const { error } = await supabase.rpc('accept_invitation', { _invitation_id: invitationId });
+    setAcceptingId(null);
+    if (error) {
+      toast({ title: '초대 수락 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '초대를 수락했습니다', description: '프로젝트에 참여되었습니다.' });
+      fetchProjects();
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId: string) => {
+    await supabase.from('project_invitations').update({ status: 'EXPIRED' }).eq('id', invitationId);
+    toast({ title: '초대를 거절했습니다' });
+    fetchProjects();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -113,6 +160,57 @@ export default function ProjectsPage() {
       </header>
 
       <main className="container py-8">
+        {/* Pending invitations */}
+        <AnimatePresence>
+          {invitations.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="mb-6"
+            >
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                <Mail className="h-4 w-4" /> 받은 초대 ({invitations.length})
+              </h3>
+              <div className="space-y-3">
+                {invitations.map((inv) => (
+                  <Card key={inv.id} className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Mail className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          <span className="font-semibold">{inv.project_name}</span> 프로젝트에 초대되었습니다
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(inv.expires_at).toLocaleDateString('ko-KR')} 까지 유효
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeclineInvitation(inv.id)}
+                        >
+                          거절
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAcceptInvitation(inv.id)}
+                          disabled={acceptingId === inv.id}
+                        >
+                          {acceptingId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : '수락'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">프로젝트</h2>
           {role === 'admin' && (
