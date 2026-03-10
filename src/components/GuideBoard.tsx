@@ -235,18 +235,20 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
-  const getSignedUrl = async (filePath: string): Promise<string | null> => {
-    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 300);
-    return data?.signedUrl || null;
+  const getFileExt = (filePath: string) => {
+    const parts = filePath.split('.');
+    return parts.length > 1 ? `.${parts.pop()}` : '';
   };
 
   const handleDownload = async (filePath: string, fileName?: string) => {
     const { data } = await supabase.storage.from('guides').download(filePath);
     if (data) {
+      const ext = getFileExt(filePath);
+      const finalName = fileName ? `${fileName}${ext}` : filePath;
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName || filePath;
+      a.download = finalName;
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -254,10 +256,11 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
-  const handlePreview = async (filePath: string) => {
-    const url = await getSignedUrl(filePath);
-    if (url) {
-      window.open(url, '_blank');
+  const handlePreview = async (filePath: string, title?: string) => {
+    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 300);
+    if (data?.signedUrl) {
+      setPreviewUrl(data.signedUrl);
+      setPreviewTitle(title || '미리보기');
     } else {
       toast({ title: '미리보기 실패', variant: 'destructive' });
     }
