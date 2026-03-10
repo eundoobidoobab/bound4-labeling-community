@@ -53,9 +53,8 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
 
     const authorIds = [...new Set(items.map(c => c.author_id))];
     if (user) authorIds.push(user.id);
-    const missing = authorIds.filter(id => !profiles[id]);
-    if (missing.length > 0) {
-      const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', missing);
+    if (authorIds.length > 0) {
+      const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', authorIds);
       if (profs) {
         setProfiles(prev => {
           const next = { ...prev };
