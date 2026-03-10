@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Users, CalendarDays, Mail, MoreHorizontal, Pencil, Trash2, Archive, RotateCcw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -185,6 +185,17 @@ export default function ProjectsPage() {
     setDeleteProject(null);
   };
 
+  const handleReactivateProject = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('projects').update({ status: 'ACTIVE' }).eq('id', projectId);
+    if (error) {
+      toast({ title: '활성화 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 다시 활성화되었습니다' });
+      fetchProjects();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -353,12 +364,18 @@ export default function ProjectsPage() {
                                 <Pencil className="mr-2 h-4 w-4" /> 수정
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
-                              >
-                                <Archive className="mr-2 h-4 w-4" /> 보관
-                              </DropdownMenuItem>
+                              {project.status === 'ARCHIVED' ? (
+                                <DropdownMenuItem onClick={(e) => handleReactivateProject(project.id, e as any)}>
+                                  <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); setDeleteProject(project); }}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" /> 보관
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
