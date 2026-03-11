@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { Loader2, MessageSquare, Pin, MoreHorizontal, Eye } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
@@ -15,67 +15,20 @@ import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
 import GuideBoard from '@/components/GuideBoard';
 import AllocationBoard from '@/components/AllocationBoard';
-
-interface Board {
-  id: string;
-  name: string;
-  type: string;
-  order_index: number;
-  status: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  status: string;
-}
-
-interface Notice {
-  id: string;
-  title: string;
-  body: string;
-  created_at: string;
-  created_by: string;
-  status: string;
-  is_pinned: boolean;
-  board_id: string;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  body: string;
-  author_id: string;
-  created_at: string;
-  status: string;
-  board_id: string;
-}
-
-interface Attachment {
-  id: string;
-  file_path: string;
-  file_name: string;
-  file_size: number;
-  mime_type: string | null;
-}
-
-interface Profile {
-  id: string;
-  display_name: string | null;
-  email: string;
-}
+import { useProfiles } from '@/hooks/useProfiles';
+import type { Board, Project, Notice, Post, Attachment } from '@/types';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
   const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
+  const { profiles, fetchProfiles } = useProfiles();
   const [board, setBoard] = useState<Board | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [noticeAttachments, setNoticeAttachments] = useState<Record<string, Attachment[]>>({});
   const [postAttachments, setPostAttachments] = useState<Record<string, Attachment[]>>({});
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
 
   const userProfile = user ? profiles[user.id] : null;
@@ -101,7 +54,7 @@ export default function BoardPage() {
         const map: Record<string, Attachment[]> = {};
         (atts || []).forEach((a: any) => { (map[a.notice_id] = map[a.notice_id] || []).push(a); });
         setNoticeAttachments(map);
-        await fetchProfiles([...new Set(items.map(n => n.created_by))]);
+        await fetchProfiles(items.map(n => n.created_by));
       }
     } else if (['QNA', 'BUG', 'CUSTOM'].includes(boardData?.type || '')) {
       const { data } = await supabase.from('posts').select('*').eq('board_id', boardId!).eq('status', 'ACTIVE')
@@ -113,24 +66,11 @@ export default function BoardPage() {
         const map: Record<string, Attachment[]> = {};
         (atts || []).forEach((a: any) => { (map[a.post_id] = map[a.post_id] || []).push(a); });
         setPostAttachments(map);
-        await fetchProfiles([...new Set(items.map(p => p.author_id))]);
+        await fetchProfiles(items.map(p => p.author_id));
       }
     }
-    // Fetch current user profile too
     if (user) await fetchProfiles([user.id]);
     setLoading(false);
-  };
-
-  const fetchProfiles = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    const { data } = await supabase.from('profiles').select('id, display_name, email').in('id', ids);
-    if (data) {
-      setProfiles(prev => {
-        const next = { ...prev };
-        data.forEach((p: any) => { next[p.id] = p; });
-        return next;
-      });
-    }
   };
 
   const handleCreateNotice = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
@@ -185,13 +125,11 @@ export default function BoardPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">{board?.name || '게시판'}</h1>
         <p className="text-sm text-muted-foreground mt-1">{boardDescriptions[board?.type || ''] || ''}</p>
       </div>
 
-      {/* Inline composer */}
       {canCreate && (
         <div className="mb-6">
           <FeedComposer
@@ -203,15 +141,9 @@ export default function BoardPage() {
         </div>
       )}
 
-      {/* Placeholder boards */}
-      {isAllocation && (
-        <AllocationBoard boardId={boardId!} projectId={project.id} />
-      )}
-      {isGuide && (
-        <GuideBoard boardId={boardId!} projectId={project.id} />
-      )}
+      {isAllocation && <AllocationBoard boardId={boardId!} projectId={project.id} />}
+      {isGuide && <GuideBoard boardId={boardId!} projectId={project.id} />}
 
-      {/* Notice feed */}
       {isNotice && (
         <div className="space-y-4">
           {notices.length === 0 ? (
@@ -233,9 +165,7 @@ export default function BoardPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDateTime(notice.created_at)}
-                              </span>
+                              <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
                               {notice.is_pinned && (
                                 <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
                                   <Pin className="h-3 w-3" /> 고정
@@ -275,7 +205,6 @@ export default function BoardPage() {
         </div>
       )}
 
-      {/* Forum feed */}
       {isForum && (
         <div className="space-y-4">
           {posts.length === 0 ? (
@@ -296,9 +225,7 @@ export default function BoardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateTime(post.created_at)}
-                            </span>
+                            <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
                           </div>
                           <CardTitle className="text-base mt-1">{post.title}</CardTitle>
                         </div>
