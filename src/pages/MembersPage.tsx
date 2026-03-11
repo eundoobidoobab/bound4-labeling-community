@@ -15,8 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
 
-interface Project { id: string; name: string; status: string; }
-interface Board { id: string; name: string; type: string; order_index: number; status: string; }
+import type { Project, Board } from '@/types';
 
 interface Member {
   id: string;
