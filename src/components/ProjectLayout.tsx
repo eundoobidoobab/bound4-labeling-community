@@ -45,19 +45,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface Board {
-  id: string;
-  name: string;
-  type: string;
-  order_index: number;
-  status: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  status: string;
-}
+// Types imported from @/types
 
 const boardIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   NOTICE: Megaphone,
