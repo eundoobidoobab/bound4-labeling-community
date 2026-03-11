@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import type { Board, Project } from '@/types';
 import {
   Sidebar,
   SidebarContent,
@@ -44,19 +45,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface Board {
-  id: string;
-  name: string;
-  type: string;
-  order_index: number;
-  status: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  status: string;
-}
+// Types imported from @/types
 
 const boardIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   NOTICE: Megaphone,

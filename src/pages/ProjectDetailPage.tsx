@@ -15,25 +15,8 @@ import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
 import FeedAttachments from '@/components/FeedAttachments';
-
-interface Notice {
-  id: string;
-  title: string;
-  body: string;
-  created_at: string;
-  created_by: string;
-  status: string;
-  is_pinned: boolean;
-  board_id: string;
-}
-
-interface Attachment {
-  id: string;
-  file_path: string;
-  file_name: string;
-  file_size: number;
-  mime_type: string | null;
-}
+import { useProfiles } from '@/hooks/useProfiles';
+import type { Notice, Attachment, Project, Board } from '@/types';
 
 interface ReadInfo {
   user_id: string;
@@ -42,18 +25,15 @@ interface ReadInfo {
   email: string;
 }
 
-interface Project { id: string; name: string; status: string; }
-interface Board { id: string; name: string; type: string; order_index: number; status: string; }
-
 export default function ProjectDetailPage() {
   const { project, boards } = useOutletContext<{ project: Project; boards: Board[] }>();
   const { id: projectId } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
+  const { profiles, fetchProfiles } = useProfiles();
 
   const [notices, setNotices] = useState<Notice[]>([]);
   const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
-  const [profiles, setProfiles] = useState<Record<string, { id: string; display_name: string | null; email: string }>>({});
   const [loading, setLoading] = useState(true);
 
   // Read tracking modal
@@ -72,16 +52,9 @@ export default function ProjectDetailPage() {
     fetchNotices();
   }, [noticeBoard]);
 
-  // Fetch current user profile
   useEffect(() => {
     if (user) fetchProfiles([user.id]);
   }, [user]);
-
-  const fetchProfiles = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    const { data } = await supabase.from('profiles').select('id, display_name, email').in('id', ids);
-    if (data) setProfiles(prev => { const n = { ...prev }; data.forEach((p: any) => { n[p.id] = p; }); return n; });
-  };
 
   const fetchNotices = async () => {
     if (!noticeBoard) return;
@@ -92,17 +65,13 @@ export default function ProjectDetailPage() {
     setLoading(false);
 
     if (items.length > 0) {
-      // Fetch attachments
       const { data: atts } = await supabase.from('notice_attachments').select('*').in('notice_id', items.map(n => n.id));
       const map: Record<string, Attachment[]> = {};
       (atts || []).forEach((a: any) => { (map[a.notice_id] = map[a.notice_id] || []).push(a); });
       setAttachments(map);
-
-      // Fetch author profiles
-      await fetchProfiles([...new Set(items.map(n => n.created_by))]);
+      await fetchProfiles(items.map(n => n.created_by));
     }
 
-    // Mark as read
     if (user && items.length > 0) {
       const noticeIds = items.map(n => n.id);
       const { data: existing } = await supabase.from('notice_reads').select('notice_id').eq('user_id', user.id).in('notice_id', noticeIds);
@@ -155,21 +124,14 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">공지사항</h1>
         <p className="text-sm text-muted-foreground mt-1">중요한 공지사항을 확인하세요</p>
       </div>
 
-      {/* Inline composer for admins */}
       {role === 'admin' && (
         <div className="mb-6">
-          <FeedComposer
-            userDisplayName={userDisplayName}
-            placeholder="공지사항을 작성하세요..."
-            titlePlaceholder="공지 제목"
-            onSubmit={handleCreate}
-          />
+          <FeedComposer userDisplayName={userDisplayName} placeholder="공지사항을 작성하세요..." titlePlaceholder="공지 제목" onSubmit={handleCreate} />
         </div>
       )}
 
@@ -179,7 +141,6 @@ export default function ProjectDetailPage() {
         </div>
       ) : (
         <>
-          {/* Pinned summary */}
           {pinnedNotices.length > 0 && (
             <div className="mb-6 rounded-lg border border-border bg-card p-4">
               <h2 className="text-sm font-semibold text-foreground mb-3">고정글</h2>
@@ -196,7 +157,6 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
-          {/* Notice feed */}
           <div className="space-y-4">
             {notices.length === 0 ? (
               <p className="py-12 text-center text-muted-foreground">등록된 공지사항이 없습니다</p>
@@ -260,7 +220,6 @@ export default function ProjectDetailPage() {
         </>
       )}
 
-      {/* Read tracking modal */}
       <Dialog open={readModalOpen} onOpenChange={setReadModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>확인율</DialogTitle></DialogHeader>
