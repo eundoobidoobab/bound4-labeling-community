@@ -585,7 +585,12 @@ export default function MembersPage() {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId, true)}>
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                  {isCurrentUserAdmin && !m.isAdmin && m.userId !== user?.id && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId, false)}>
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   )}
