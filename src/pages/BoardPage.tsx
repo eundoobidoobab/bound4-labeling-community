@@ -38,12 +38,12 @@ export default function BoardPage() {
   const postAttachments = data?.postAttachments ?? {};
 
   // Fetch profiles when data is available
-  useState(() => {
+  useEffect(() => {
     if (data?.authorIds && data.authorIds.length > 0) {
       fetchProfiles(data.authorIds);
     }
     if (user) fetchProfiles([user.id]);
-  });
+  }, [data?.authorIds, user]);
 
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
