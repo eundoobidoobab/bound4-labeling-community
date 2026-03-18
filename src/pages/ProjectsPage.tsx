@@ -66,6 +66,10 @@ export default function ProjectsPage() {
       setNewProjectName(''); setNewProjectDesc(''); setDialogOpen(false);
       toast({ title: '프로젝트가 생성되었습니다' });
       invalidate();
+      // auto_add_project_admin 트리거가 이미 project_admins에 추가하므로 바로 이동
+      if (data) {
+        navigate(`/projects/${data[0].id}`);
+      }
     }
   };
 
