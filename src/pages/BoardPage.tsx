@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal, Trash2 } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
