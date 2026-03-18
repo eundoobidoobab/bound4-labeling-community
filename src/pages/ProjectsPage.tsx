@@ -29,6 +29,7 @@ export default function ProjectsPage() {
   const memberCounts = data?.memberCounts ?? {};
   const joinedProjectIds = data?.joinedProjectIds ?? new Set<string>();
   const invitations = data?.invitations ?? [];
+  const unreadCount = useUnreadNotifications(user?.id);
 
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -46,6 +47,7 @@ export default function ProjectsPage() {
   const [joining, setJoining] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
 
   const isAdmin = role === 'admin';
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['projects'] });
