@@ -214,19 +214,42 @@ export default function BoardPage() {
                 <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
                   <Card>
                     <CardHeader className="pb-2">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                            <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
+                              <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
+                            </div>
+                            <CardTitle className="text-base mt-1">{post.title}</CardTitle>
                           </div>
-                          <CardTitle className="text-base mt-1">{post.title}</CardTitle>
                         </div>
+                        {(post.author_id === user?.id || role === 'admin') && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={async () => {
+                                  await supabase.from('posts').delete().eq('id', post.id);
+                                  toast({ title: '게시글이 삭제되었습니다' });
+                                  invalidateBoard();
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />삭제
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="pl-16">
