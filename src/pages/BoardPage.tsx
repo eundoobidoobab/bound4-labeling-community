@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import AllocationBoard from '@/components/AllocationBoard';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useBoardData } from '@/hooks/useBoardData';
 import { useQueryClient } from '@tanstack/react-query';
+import EditableContent from '@/components/EditableContent';
 import type { Board, Project, Notice } from '@/types';
 
 export default function BoardPage() {
@@ -28,6 +29,7 @@ export default function BoardPage() {
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data, isLoading } = useBoardData(boardId);
 
@@ -171,6 +173,9 @@ export default function BoardPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingId(notice.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />수정
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => togglePin(notice)}>
                                 <Pin className="mr-2 h-4 w-4" />
                                 {notice.is_pinned ? '고정 해제' : '고정'}
@@ -191,9 +196,25 @@ export default function BoardPage() {
                       </div>
                     </CardHeader>
                     <CardContent className="pl-16">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
-                      <FeedAttachments attachments={noticeAttachments[notice.id] || []} />
-                      <FeedComments type="notice" parentId={notice.id} />
+                      {editingId === notice.id ? (
+                        <EditableContent
+                          title={notice.title}
+                          body={notice.body}
+                          onSave={async (title, body) => {
+                            await supabase.from('notices').update({ title, body }).eq('id', notice.id);
+                            toast({ title: '공지사항이 수정되었습니다' });
+                            setEditingId(null);
+                            invalidateBoard();
+                          }}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
+                          <FeedAttachments attachments={noticeAttachments[notice.id] || []} />
+                          <FeedComments type="notice" parentId={notice.id} />
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -237,6 +258,9 @@ export default function BoardPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingId(post.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />수정
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={async () => {
@@ -253,9 +277,25 @@ export default function BoardPage() {
                       </div>
                     </CardHeader>
                     <CardContent className="pl-16">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
-                      <FeedAttachments attachments={postAttachments[post.id] || []} />
-                      <FeedComments type="post" parentId={post.id} />
+                      {editingId === post.id ? (
+                        <EditableContent
+                          title={post.title}
+                          body={post.body}
+                          onSave={async (title, body) => {
+                            await supabase.from('posts').update({ title, body }).eq('id', post.id);
+                            toast({ title: '게시글이 수정되었습니다' });
+                            setEditingId(null);
+                            invalidateBoard();
+                          }}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
+                          <FeedAttachments attachments={postAttachments[post.id] || []} />
+                          <FeedComments type="post" parentId={post.id} />
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
