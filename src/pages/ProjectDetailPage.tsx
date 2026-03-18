@@ -37,6 +37,7 @@ export default function ProjectDetailPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Read tracking modal
   const [readModalOpen, setReadModalOpen] = useState(false);
