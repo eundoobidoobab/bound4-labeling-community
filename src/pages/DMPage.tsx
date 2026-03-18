@@ -190,9 +190,10 @@ export default function DMPage() {
     setSearchParams({ thread: threadId });
   };
 
-  const getOtherParticipant = (thread: Thread): Profile | undefined => {
-    const otherId = user?.id === thread.admin_id ? thread.worker_id : thread.admin_id;
-    return profiles[otherId];
+  const getOtherParticipant = (thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
+    const isCurrentUserAdmin = user?.id === thread.admin_id;
+    const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
+    return { profile: profiles[otherId], role: isCurrentUserAdmin ? '작업자' : '관리자' };
   };
 
   const activeThread = threads.find(t => t.id === activeThreadId);
@@ -223,7 +224,7 @@ export default function DMPage() {
             </div>
           ) : (
             threads.map(thread => {
-              const other = getOtherParticipant(thread);
+              const { profile: other, role: otherRole } = getOtherParticipant(thread);
               const isActive = thread.id === activeThreadId;
               return (
                 <button
@@ -233,15 +234,15 @@ export default function DMPage() {
                 >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                      {(other?.display_name || other?.email || '?').charAt(0).toUpperCase()}
+                      {(other?.display_name || '?').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {other?.display_name || other?.email || '알 수 없음'}
+                      {other?.display_name || '알 수 없음'}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {other?.email || ''}
+                      {otherRole}
                     </p>
                   </div>
                 </button>
@@ -273,18 +274,19 @@ export default function DMPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               {activeThread && (() => {
-                const other = getOtherParticipant(activeThread);
+                const { profile: other, role: otherRole } = getOtherParticipant(activeThread);
                 return (
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {(other?.display_name || other?.email || '?').charAt(0).toUpperCase()}
+                        {(other?.display_name || '?').charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {other?.display_name || other?.email || '알 수 없음'}
+                        {other?.display_name || '알 수 없음'}
                       </p>
+                      <p className="text-xs text-muted-foreground">{otherRole}</p>
                     </div>
                   </div>
                 );
