@@ -13,6 +13,7 @@ import BoardPage from "./pages/BoardPage";
 import MembersPage from "./pages/MembersPage";
 import DMPage from "./pages/DMPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
