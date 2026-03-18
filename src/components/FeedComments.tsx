@@ -4,8 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ChevronUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Send, ChevronUp, Trash2 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { formatDateTime } from '@/lib/formatDate';
 
 const PREVIEW_COUNT = 3;
@@ -29,7 +29,7 @@ interface FeedCommentsProps {
 }
 
 export default function FeedComments({ type, parentId }: FeedCommentsProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [showAll, setShowAll] = useState(false);
@@ -78,6 +78,15 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     await fetchComments();
   };
 
+  const handleDelete = async (commentId: string) => {
+    if (type === 'post') {
+      await supabase.from('comments').delete().eq('id', commentId);
+    } else {
+      await supabase.from('notice_comments').delete().eq('id', commentId);
+    }
+    setComments(prev => prev.filter(c => c.id !== commentId));
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -89,10 +98,14 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const hiddenCount = comments.length - PREVIEW_COUNT;
   const visibleComments = showAll ? comments : comments.slice(-PREVIEW_COUNT);
 
+  const canDelete = (comment: Comment) => {
+    return user?.id === comment.author_id || role === 'admin';
+  };
+
   const renderComment = (comment: Comment) => {
     const author = profiles[comment.author_id];
     return (
-      <div key={comment.id} className="flex gap-2">
+      <div key={comment.id} className="flex gap-2 group">
         <Avatar className="h-7 w-7 shrink-0">
           <AvatarFallback className="text-[10px] bg-muted text-muted-foreground">
             {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
@@ -107,6 +120,15 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
               <span className="text-[10px] text-muted-foreground">
                 {formatDateTime(comment.created_at)}
               </span>
+              {canDelete(comment) && (
+                <button
+                  onClick={() => handleDelete(comment.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-muted-foreground hover:text-destructive"
+                  title="삭제"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
             </div>
             <p className="text-sm text-foreground whitespace-pre-wrap">{comment.body}</p>
           </div>
@@ -117,7 +139,6 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      {/* Show more button */}
       {hasHidden && !showAll && (
         <button
           onClick={() => setShowAll(true)}
@@ -128,7 +149,6 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
         </button>
       )}
 
-      {/* Comments */}
       <AnimatePresence initial={false}>
         {visibleComments.length > 0 && (
           <div className="space-y-2.5 mb-3">
@@ -137,7 +157,6 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
         )}
       </AnimatePresence>
 
-      {/* Comment input - always visible */}
       {user && (
         <div className="flex gap-2">
           <Avatar className="h-7 w-7 shrink-0">
