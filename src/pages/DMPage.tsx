@@ -145,13 +145,24 @@ export default function DMPage() {
     setBody('');
     setSending(false);
 
+    // Optimistic update: show message immediately
+    const optimisticMsg: Message = {
+      id: crypto.randomUUID(),
+      thread_id: activeThreadId,
+      sender_id: user.id,
+      body: msgBody,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
     await supabase.from('dm_messages').insert({
       thread_id: activeThreadId,
       sender_id: user.id,
       body: msgBody,
     });
 
-    // Fire-and-forget: send notification without blocking UI
+    // Fire-and-forget notification
     const thread = threads.find(t => t.id === activeThreadId);
     if (thread) {
       const recipientId = user.id === thread.admin_id ? thread.worker_id : thread.admin_id;
