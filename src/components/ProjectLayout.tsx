@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Board, Project } from '@/types';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import {
   Sidebar,
   SidebarContent,
