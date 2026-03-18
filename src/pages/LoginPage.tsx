@@ -213,7 +213,16 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 space-y-2 text-center">
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setPassword(''); }}
+                  className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
