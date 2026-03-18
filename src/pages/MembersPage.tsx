@@ -251,14 +251,19 @@ export default function MembersPage() {
     }
   };
 
-  const handleStartDm = async (adminId: string) => {
+  const handleStartDm = async (targetUserId: string, targetIsAdmin: boolean) => {
     if (!projectId || !user) return;
+
+    // Determine admin_id and worker_id based on who is initiating
+    const adminId = targetIsAdmin ? targetUserId : user.id;
+    const workerId = targetIsAdmin ? user.id : targetUserId;
+
     const { data: existing } = await supabase
       .from('dm_threads')
       .select('id')
       .eq('project_id', projectId)
       .eq('admin_id', adminId)
-      .eq('worker_id', user.id)
+      .eq('worker_id', workerId)
       .maybeSingle();
 
     if (existing) {
@@ -268,7 +273,7 @@ export default function MembersPage() {
 
     const { data: newThread, error } = await supabase
       .from('dm_threads')
-      .insert({ project_id: projectId, admin_id: adminId, worker_id: user.id })
+      .insert({ project_id: projectId, admin_id: adminId, worker_id: workerId })
       .select('id')
       .single();
 
@@ -511,14 +516,15 @@ export default function MembersPage() {
 
               {/* Actions */}
               <div className="flex justify-end gap-1">
+                {/* Worker → Admin DM */}
                 {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    title="메시지 보내기"
-                    onClick={() => handleStartDm(m.userId)}
-                  >
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="메시지 보내기" onClick={() => handleStartDm(m.userId, true)}>
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+                {/* Admin → Worker DM */}
+                {isCurrentUserAdmin && !m.isAdmin && m.userId !== user?.id && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="메시지 보내기" onClick={() => handleStartDm(m.userId, false)}>
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 )}
@@ -579,7 +585,12 @@ export default function MembersPage() {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId, true)}>
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                  {isCurrentUserAdmin && !m.isAdmin && m.userId !== user?.id && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId, false)}>
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   )}
