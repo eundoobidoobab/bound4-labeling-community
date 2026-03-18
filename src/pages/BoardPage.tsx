@@ -175,6 +175,16 @@ export default function BoardPage() {
                                 <Pin className="mr-2 h-4 w-4" />
                                 {notice.is_pinned ? '고정 해제' : '고정'}
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={async () => {
+                                  await supabase.from('notices').delete().eq('id', notice.id);
+                                  toast({ title: '공지사항이 삭제되었습니다' });
+                                  invalidateBoard();
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />삭제
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
