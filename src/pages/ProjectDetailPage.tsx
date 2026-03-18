@@ -210,6 +210,9 @@ export default function ProjectDetailPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingId(notice.id)}>
+                                  <Pencil className="mr-2 h-4 w-4" />수정
+                                </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => togglePin(notice)}>
                                   <Pin className="mr-2 h-4 w-4" />
                                   {notice.is_pinned ? '고정 해제' : '고정'}
@@ -233,9 +236,25 @@ export default function ProjectDetailPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="pl-16">
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
-                        <FeedAttachments attachments={attachments[notice.id] || []} />
-                        <FeedComments type="notice" parentId={notice.id} />
+                        {editingId === notice.id ? (
+                          <EditableContent
+                            title={notice.title}
+                            body={notice.body}
+                            onSave={async (title, body) => {
+                              await supabase.from('notices').update({ title, body }).eq('id', notice.id);
+                              toast({ title: '공지사항이 수정되었습니다' });
+                              setEditingId(null);
+                              fetchNotices();
+                            }}
+                            onCancel={() => setEditingId(null)}
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
+                            <FeedAttachments attachments={attachments[notice.id] || []} />
+                            <FeedComments type="notice" parentId={notice.id} />
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
