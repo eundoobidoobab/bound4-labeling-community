@@ -274,18 +274,19 @@ export default function DMPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               {activeThread && (() => {
-                const other = getOtherParticipant(activeThread);
+                const { profile: other, role: otherRole } = getOtherParticipant(activeThread);
                 return (
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {(other?.display_name || other?.email || '?').charAt(0).toUpperCase()}
+                        {(other?.display_name || '?').charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {other?.display_name || other?.email || '알 수 없음'}
+                        {other?.display_name || '알 수 없음'}
                       </p>
+                      <p className="text-xs text-muted-foreground">{otherRole}</p>
                     </div>
                   </div>
                 );
