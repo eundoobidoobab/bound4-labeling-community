@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, Eye, MoreHorizontal } from 'lucide-react';
+import { Loader2, Pin, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
