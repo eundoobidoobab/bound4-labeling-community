@@ -91,6 +91,18 @@ export default function ProjectDetailPage() {
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
+    // Notify all project members except the creator
+    if (projectId) {
+      const memberIds = await getProjectMemberIds(projectId, [user.id]);
+      await sendNotifications({
+        userIds: memberIds,
+        type: 'NOTICE_PUBLISHED',
+        title: '새 공지사항',
+        body: title,
+        projectId,
+        deepLink: `/projects/${projectId}`,
+      });
+    }
     toast({ title: '공지사항이 등록되었습니다' });
     fetchNotices();
   };

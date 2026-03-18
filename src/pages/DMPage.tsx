@@ -139,13 +139,31 @@ export default function DMPage() {
   };
 
   const handleSend = async () => {
-    if (!body.trim() || !activeThreadId || !user) return;
+    if (!body.trim() || !activeThreadId || !user || !projectId) return;
     setSending(true);
+    const msgBody = body.trim();
     await supabase.from('dm_messages').insert({
       thread_id: activeThreadId,
       sender_id: user.id,
-      body: body.trim(),
+      body: msgBody,
     });
+
+    // Send notification to the other participant
+    const thread = threads.find(t => t.id === activeThreadId);
+    if (thread) {
+      const recipientId = user.id === thread.admin_id ? thread.worker_id : thread.admin_id;
+      const senderProfile = profiles[user.id];
+      const senderName = senderProfile?.display_name || senderProfile?.email || '알 수 없음';
+      await sendNotifications({
+        userIds: [recipientId],
+        type: 'DM_NEW_MESSAGE',
+        title: `${senderName}님의 새 메시지`,
+        body: msgBody.length > 50 ? msgBody.slice(0, 50) + '...' : msgBody,
+        projectId,
+        deepLink: `/projects/${projectId}/dm?thread=${activeThreadId}`,
+      });
+    }
+
     setBody('');
     setSending(false);
   };

@@ -235,6 +235,17 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           guide_version_id: version.id,
         }, { onConflict: 'project_id' });
 
+      // Notify all project members except the creator
+      const memberIds = await getProjectMemberIds(projectId, [user.id]);
+      await sendNotifications({
+        userIds: memberIds,
+        type: 'GUIDE_UPDATED',
+        title: '가이드 업데이트',
+        body: `"${versionDialogDoc.title}" v${nextVersion}이 등록되었습니다.`,
+        projectId,
+        deepLink: `/projects/${projectId}/boards/${boardId}`,
+      });
+
       toast({ title: `v${nextVersion}이 등록되었습니다` });
       setVersionDialogDoc(null);
       setVersionFile(null);

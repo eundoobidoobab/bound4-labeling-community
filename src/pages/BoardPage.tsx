@@ -58,6 +58,16 @@ export default function BoardPage() {
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
+    // Notify all project members except the creator
+    const memberIds = await getProjectMemberIds(project.id, [user.id]);
+    await sendNotifications({
+      userIds: memberIds,
+      type: 'NOTICE_PUBLISHED',
+      title: '새 공지사항',
+      body: title,
+      projectId: project.id,
+      deepLink: `/projects/${project.id}/boards/${boardId}`,
+    });
     toast({ title: '공지사항이 등록되었습니다' });
     invalidateBoard();
   };
