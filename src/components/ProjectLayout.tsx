@@ -198,8 +198,13 @@ export default function ProjectLayout() {
               프로젝트 목록
             </Button>
             <div className="flex-1" />
-            <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Button>
           </header>
           <main className="flex-1 overflow-auto">
