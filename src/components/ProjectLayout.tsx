@@ -156,6 +156,7 @@ export default function ProjectLayout() {
   const { toast } = useToast();
   const { project, boards, loading } = useProjectLayout(id);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const unreadCount = useUnreadNotifications(user?.id);
 
   const handleLeaveProject = async () => {
     if (!id || !user) return;
