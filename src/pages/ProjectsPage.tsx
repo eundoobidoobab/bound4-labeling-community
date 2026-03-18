@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProjectsData } from '@/hooks/useProjectsData';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import type { Project } from '@/types';
 import ProjectCard from '@/components/projects/ProjectCard';
 import InvitationSection from '@/components/projects/InvitationSection';
