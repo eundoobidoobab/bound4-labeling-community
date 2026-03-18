@@ -417,8 +417,8 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Members table */}
-      <div className="border border-border rounded-lg overflow-hidden">
+      {/* Members table - desktop */}
+      <div className="hidden md:block border border-border rounded-lg overflow-hidden">
         <div className="grid grid-cols-[1fr_120px_100px_160px_40px] items-center gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
           <span>이름</span>
           <span>역할</span>
@@ -532,6 +532,63 @@ export default function MembersPage() {
                     <X className="h-4 w-4" />
                   </Button>
                 )}
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+
+      {/* Members cards - mobile */}
+      <div className="md:hidden space-y-3">
+        {filteredMembers.length === 0 ? (
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            해당하는 구성원이 없습니다
+          </div>
+        ) : (
+          filteredMembers.map((m, i) => (
+            <motion.div
+              key={m.key}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.02 }}
+              className="rounded-lg border border-border p-4 bg-card"
+            >
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarFallback className={`text-xs ${m.isAdmin ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    {(m.display_name || m.email).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{m.display_name || m.email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <Badge
+                      variant={m.isAdmin ? 'default' : 'secondary'}
+                      className={`text-xs ${m.isAdmin ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-primary/10 text-primary hover:bg-primary/10'}`}
+                    >
+                      {m.roleLabel}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      {m.isAdmin ? '관리자' : '참여자'}
+                    </Badge>
+                    {m.joinedAt && (
+                      <span className="text-[10px] text-muted-foreground">{formatDateTime(m.joinedAt)}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId)}>
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                  {!m.isAdmin && isCurrentUserAdmin && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeMember(m.membershipId!)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))
