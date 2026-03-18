@@ -29,6 +29,7 @@ export default function BoardPage() {
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data, isLoading } = useBoardData(boardId);
 
