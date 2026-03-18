@@ -258,6 +258,9 @@ export default function BoardPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingId(post.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />수정
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={async () => {
@@ -274,9 +277,25 @@ export default function BoardPage() {
                       </div>
                     </CardHeader>
                     <CardContent className="pl-16">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
-                      <FeedAttachments attachments={postAttachments[post.id] || []} />
-                      <FeedComments type="post" parentId={post.id} />
+                      {editingId === post.id ? (
+                        <EditableContent
+                          title={post.title}
+                          body={post.body}
+                          onSave={async (title, body) => {
+                            await supabase.from('posts').update({ title, body }).eq('id', post.id);
+                            toast({ title: '게시글이 수정되었습니다' });
+                            setEditingId(null);
+                            invalidateBoard();
+                          }}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
+                          <FeedAttachments attachments={postAttachments[post.id] || []} />
+                          <FeedComments type="post" parentId={post.id} />
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
