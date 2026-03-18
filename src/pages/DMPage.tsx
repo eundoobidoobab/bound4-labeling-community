@@ -190,9 +190,10 @@ export default function DMPage() {
     setSearchParams({ thread: threadId });
   };
 
-  const getOtherParticipant = (thread: Thread): Profile | undefined => {
-    const otherId = user?.id === thread.admin_id ? thread.worker_id : thread.admin_id;
-    return profiles[otherId];
+  const getOtherParticipant = (thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
+    const isCurrentUserAdmin = user?.id === thread.admin_id;
+    const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
+    return { profile: profiles[otherId], role: isCurrentUserAdmin ? '작업자' : '관리자' };
   };
 
   const activeThread = threads.find(t => t.id === activeThreadId);
