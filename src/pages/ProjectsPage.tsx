@@ -56,9 +56,10 @@ export default function ProjectsPage() {
     e.preventDefault();
     if (!newProjectName.trim() || !user) return;
     setCreating(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('projects')
-      .insert({ name: newProjectName.trim(), description: newProjectDesc.trim() || null, created_by: user.id } as any);
+      .insert({ name: newProjectName.trim(), description: newProjectDesc.trim() || null, created_by: user.id } as any)
+      .select();
     setCreating(false);
     if (error) {
       toast({ title: '프로젝트 생성 실패', description: error.message, variant: 'destructive' });
@@ -66,6 +67,10 @@ export default function ProjectsPage() {
       setNewProjectName(''); setNewProjectDesc(''); setDialogOpen(false);
       toast({ title: '프로젝트가 생성되었습니다' });
       invalidate();
+      // auto_add_project_admin 트리거가 이미 project_admins에 추가하므로 바로 이동
+      if (data) {
+        navigate(`/projects/${data[0].id}`);
+      }
     }
   };
 
