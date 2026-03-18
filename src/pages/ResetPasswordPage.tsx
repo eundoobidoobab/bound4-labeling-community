@@ -32,6 +32,13 @@ export default function ResetPasswordPage() {
       setIsRecovery(true);
     }
 
+    // Also check if user already has an active session (recovery event may have fired before mount)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsRecovery(true);
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 
