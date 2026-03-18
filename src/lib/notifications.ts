@@ -32,7 +32,7 @@ export async function sendNotifications(params: {
 
   const notifs = params.userIds.map(userId => ({
     user_id: userId,
-    type: params.type as string,
+    type: params.type,
     title: params.title,
     body: params.body || null,
     project_id: params.projectId,
