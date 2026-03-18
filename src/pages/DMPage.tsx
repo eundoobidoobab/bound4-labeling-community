@@ -5,11 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendNotifications } from '@/lib/notifications';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, MessageSquare, ArrowLeft } from 'lucide-react';
-import { formatDateTime } from '@/lib/formatDate';
-import { motion } from 'framer-motion';
+import { Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
+import DMMessageInput from '@/components/dm/DMMessageInput';
+import DMMessageBubble from '@/components/dm/DMMessageBubble';
 
 interface Thread {
   id: string;
@@ -27,10 +26,21 @@ interface Message {
   created_at: string;
 }
 
+interface Attachment {
+  id: string;
+  message_id: string;
+  file_path: string;
+}
+
 interface Profile {
   id: string;
   display_name: string | null;
   email: string;
+}
+
+interface ReadCursor {
+  user_id: string;
+  last_read_at: string;
 }
 
 export default function DMPage() {
@@ -40,10 +50,10 @@ export default function DMPage() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [readCursors, setReadCursors] = useState<Record<string, ReadCursor>>({});
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [body, setBody] = useState('');
   const [mobileShowChat, setMobileShowChat] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,16 +89,49 @@ export default function DMPage() {
           if (prev.some(m => m.id === newMsg.id)) return prev;
           return [...prev, newMsg];
         });
-        // Fetch profile if unknown
         if (!profiles[newMsg.sender_id]) {
           fetchProfiles([newMsg.sender_id]);
         }
+        // Fetch attachments for new message
+        fetchAttachmentsForMessages([newMsg.id]);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        // Update own read cursor on incoming message
+        if (newMsg.sender_id !== user?.id) {
+          updateReadCursor(activeThreadId);
+        }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [activeThreadId]);
+
+  // Realtime subscription for read cursors
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const channel = supabase
+      .channel(`dm-read-${activeThreadId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'dm_read_cursors',
+        filter: `thread_id=eq.${activeThreadId}`,
+      }, (payload) => {
+        const cursor = payload.new as any;
+        if (cursor?.user_id) {
+          setReadCursors(prev => ({ ...prev, [cursor.user_id]: cursor }));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeThreadId]);
+
+  // Mark as read when entering a thread
+  useEffect(() => {
+    if (activeThreadId && user) {
+      updateReadCursor(activeThreadId);
+    }
+  }, [activeThreadId, messages.length]);
 
   const fetchThreads = async () => {
     setLoading(true);
@@ -101,7 +144,6 @@ export default function DMPage() {
     const items = (data || []) as Thread[];
     setThreads(items);
 
-    // Fetch all participant profiles
     const ids = new Set<string>();
     items.forEach(t => { ids.add(t.admin_id); ids.add(t.worker_id); });
     if (user) ids.add(user.id);
@@ -122,7 +164,63 @@ export default function DMPage() {
     const senderIds = [...new Set(items.map(m => m.sender_id))];
     await fetchProfiles(senderIds);
 
+    // Fetch attachments and read cursors in parallel
+    const msgIds = items.map(m => m.id);
+    await Promise.all([
+      fetchAttachmentsForMessages(msgIds),
+      fetchReadCursors(threadId),
+    ]);
+
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+  };
+
+  const fetchAttachmentsForMessages = async (messageIds: string[]) => {
+    if (messageIds.length === 0) return;
+    const { data } = await supabase
+      .from('dm_attachments')
+      .select('*')
+      .in('message_id', messageIds);
+
+    if (data) {
+      setAttachments(prev => {
+        const next = { ...prev };
+        (data as Attachment[]).forEach(a => {
+          if (!next[a.message_id]) next[a.message_id] = [];
+          if (!next[a.message_id].some(x => x.id === a.id)) {
+            next[a.message_id] = [...next[a.message_id], a];
+          }
+        });
+        return next;
+      });
+    }
+  };
+
+  const fetchReadCursors = async (threadId: string) => {
+    const { data } = await supabase
+      .from('dm_read_cursors')
+      .select('*')
+      .eq('thread_id', threadId);
+
+    if (data) {
+      const cursors: Record<string, ReadCursor> = {};
+      (data as any[]).forEach(c => { cursors[c.user_id] = c; });
+      setReadCursors(cursors);
+    }
+  };
+
+  const updateReadCursor = async (threadId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    // Upsert
+    const { error } = await supabase
+      .from('dm_read_cursors')
+      .upsert(
+        { thread_id: threadId, user_id: user.id, last_read_at: now },
+        { onConflict: 'thread_id,user_id' }
+      );
+    if (!error) {
+      setReadCursors(prev => ({ ...prev, [user.id]: { user_id: user.id, last_read_at: now } }));
+    }
   };
 
   const fetchProfiles = async (ids: string[]) => {
@@ -138,51 +236,68 @@ export default function DMPage() {
     }
   };
 
-  const handleSend = async () => {
-    if (!body.trim() || !activeThreadId || !user || !projectId) return;
-    setSending(true);
-    const msgBody = body.trim();
-    setBody('');
-    setSending(false);
+  const handleSend = async (msgBody: string, files: File[]) => {
+    if (!activeThreadId || !user || !projectId) return;
+    if (!msgBody && files.length === 0) return;
 
-    // Optimistic update: show message immediately
+    // Optimistic message
+    const optimisticId = crypto.randomUUID();
     const optimisticMsg: Message = {
-      id: crypto.randomUUID(),
+      id: optimisticId,
       thread_id: activeThreadId,
       sender_id: user.id,
-      body: msgBody,
+      body: msgBody || '',
       created_at: new Date().toISOString(),
     };
     setMessages(prev => [...prev, optimisticMsg]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
 
-    await supabase.from('dm_messages').insert({
-      thread_id: activeThreadId,
-      sender_id: user.id,
-      body: msgBody,
-    });
+    // Insert message
+    const { data: insertedMsg } = await supabase
+      .from('dm_messages')
+      .insert({ thread_id: activeThreadId, sender_id: user.id, body: msgBody || '' })
+      .select('id')
+      .single();
 
-    // Fire-and-forget notification
+    const realMsgId = insertedMsg?.id;
+
+    // Upload files
+    if (files.length > 0 && realMsgId) {
+      await Promise.all(
+        files.map(async (file) => {
+          const filePath = `${activeThreadId}/${realMsgId}/${crypto.randomUUID()}_${file.name}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('dm_attachments')
+            .upload(filePath, file);
+          if (!uploadErr) {
+            await supabase.from('dm_attachments').insert({
+              message_id: realMsgId,
+              file_path: filePath,
+            });
+          }
+        })
+      );
+      // Fetch attachments for the real message
+      fetchAttachmentsForMessages([realMsgId]);
+    }
+
+    // Notification
     const thread = threads.find(t => t.id === activeThreadId);
     if (thread) {
       const recipientId = user.id === thread.admin_id ? thread.worker_id : thread.admin_id;
       const senderProfile = profiles[user.id];
-      const senderName = senderProfile?.display_name || senderProfile?.email || '알 수 없음';
+      const senderName = senderProfile?.display_name || '알 수 없음';
+      const notifBody = msgBody
+        ? (msgBody.length > 50 ? msgBody.slice(0, 50) + '...' : msgBody)
+        : '📎 첨부파일';
       sendNotifications({
         userIds: [recipientId],
         type: 'DM_NEW_MESSAGE',
         title: `${senderName}님의 새 메시지`,
-        body: msgBody.length > 50 ? msgBody.slice(0, 50) + '...' : msgBody,
+        body: notifBody,
         projectId,
         deepLink: `/projects/${projectId}/dm?thread=${activeThreadId}`,
       });
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
     }
   };
 
@@ -194,6 +309,18 @@ export default function DMPage() {
     const isCurrentUserAdmin = user?.id === thread.admin_id;
     const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
     return { profile: profiles[otherId], role: isCurrentUserAdmin ? '작업자' : '관리자' };
+  };
+
+  const getOtherId = (thread: Thread) => {
+    return user?.id === thread.admin_id ? thread.worker_id : thread.admin_id;
+  };
+
+  // Check if a message is read by the other participant
+  const isMessageReadByOther = (msg: Message, thread: Thread): boolean => {
+    const otherId = getOtherId(thread);
+    const otherCursor = readCursors[otherId];
+    if (!otherCursor) return false;
+    return new Date(otherCursor.last_read_at) >= new Date(msg.created_at);
   };
 
   const activeThread = threads.find(t => t.id === activeThreadId);
@@ -216,12 +343,9 @@ export default function DMPage() {
             메시지
           </h2>
         </div>
-
         <ScrollArea className="flex-1">
           {threads.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              대화가 없습니다
-            </div>
+            <div className="p-6 text-center text-sm text-muted-foreground">대화가 없습니다</div>
           ) : (
             threads.map(thread => {
               const { profile: other, role: otherRole } = getOtherParticipant(thread);
@@ -241,9 +365,7 @@ export default function DMPage() {
                     <p className="text-sm font-medium text-foreground truncate">
                       {other?.display_name || '알 수 없음'}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {otherRole}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{otherRole}</p>
                   </div>
                 </button>
               );
@@ -283,9 +405,7 @@ export default function DMPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {other?.display_name || '알 수 없음'}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">{other?.display_name || '알 수 없음'}</p>
                       <p className="text-xs text-muted-foreground">{otherRole}</p>
                     </div>
                   </div>
@@ -297,53 +417,28 @@ export default function DMPage() {
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4 max-w-2xl mx-auto">
                 {messages.length === 0 && (
-                  <p className="text-center text-sm text-muted-foreground py-8">
-                    대화를 시작하세요
-                  </p>
+                  <p className="text-center text-sm text-muted-foreground py-8">대화를 시작하세요</p>
                 )}
                 {messages.map((msg, i) => {
                   const isMine = msg.sender_id === user?.id;
                   const sender = profiles[msg.sender_id];
                   const showAvatar = !isMine && (i === 0 || messages[i - 1].sender_id !== msg.sender_id);
+                  const msgAttachments = attachments[msg.id] || [];
+                  const isRead = isMine && activeThread ? isMessageReadByOther(msg, activeThread) : false;
 
                   return (
-                    <motion.div
+                    <DMMessageBubble
                       key={msg.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {!isMine && (
-                        <div className="w-8 shrink-0">
-                          {showAvatar && (
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs bg-muted text-muted-foreground">
-                                {(sender?.display_name || sender?.email || '?').charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                      )}
-                      <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'}`}>
-                        {showAvatar && !isMine && (
-                          <p className="text-xs text-muted-foreground mb-1 ml-1">
-                            {sender?.display_name || sender?.email || '알 수 없음'}
-                          </p>
-                        )}
-                        <div
-                          className={`rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
-                            isMine
-                              ? 'bg-primary text-primary-foreground rounded-br-md'
-                              : 'bg-muted text-foreground rounded-bl-md'
-                          }`}
-                        >
-                          {msg.body}
-                        </div>
-                        <p className={`text-[10px] text-muted-foreground mt-1 ${isMine ? 'text-right mr-1' : 'ml-1'}`}>
-                          {formatDateTime(msg.created_at)}
-                        </p>
-                      </div>
-                    </motion.div>
+                      id={msg.id}
+                      body={msg.body}
+                      senderId={msg.sender_id}
+                      createdAt={msg.created_at}
+                      isMine={isMine}
+                      senderName={sender?.display_name || '알 수 없음'}
+                      showAvatar={showAvatar}
+                      attachments={msgAttachments}
+                      isRead={isRead}
+                    />
                   );
                 })}
                 <div ref={messagesEndRef} />
@@ -351,26 +446,7 @@ export default function DMPage() {
             </ScrollArea>
 
             {/* Input */}
-            <div className="p-4 border-t border-border bg-card shrink-0">
-              <div className="flex gap-2 max-w-2xl mx-auto">
-                <Textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="메시지를 입력하세요..."
-                  rows={1}
-                  className="resize-none min-h-[40px] text-sm"
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={sending || !body.trim()}
-                  className="h-10 w-10 shrink-0"
-                >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+            <DMMessageInput onSend={handleSend} />
           </>
         )}
       </div>
