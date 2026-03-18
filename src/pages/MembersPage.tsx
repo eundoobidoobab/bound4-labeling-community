@@ -251,14 +251,19 @@ export default function MembersPage() {
     }
   };
 
-  const handleStartDm = async (adminId: string) => {
+  const handleStartDm = async (targetUserId: string, targetIsAdmin: boolean) => {
     if (!projectId || !user) return;
+
+    // Determine admin_id and worker_id based on who is initiating
+    const adminId = targetIsAdmin ? targetUserId : user.id;
+    const workerId = targetIsAdmin ? user.id : targetUserId;
+
     const { data: existing } = await supabase
       .from('dm_threads')
       .select('id')
       .eq('project_id', projectId)
       .eq('admin_id', adminId)
-      .eq('worker_id', user.id)
+      .eq('worker_id', workerId)
       .maybeSingle();
 
     if (existing) {
@@ -268,7 +273,7 @@ export default function MembersPage() {
 
     const { data: newThread, error } = await supabase
       .from('dm_threads')
-      .insert({ project_id: projectId, admin_id: adminId, worker_id: user.id })
+      .insert({ project_id: projectId, admin_id: adminId, worker_id: workerId })
       .select('id')
       .single();
 
