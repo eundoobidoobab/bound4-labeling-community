@@ -142,19 +142,22 @@ export default function DMPage() {
     if (!body.trim() || !activeThreadId || !user || !projectId) return;
     setSending(true);
     const msgBody = body.trim();
+    setBody('');
+    setSending(false);
+
     await supabase.from('dm_messages').insert({
       thread_id: activeThreadId,
       sender_id: user.id,
       body: msgBody,
     });
 
-    // Send notification to the other participant
+    // Fire-and-forget: send notification without blocking UI
     const thread = threads.find(t => t.id === activeThreadId);
     if (thread) {
       const recipientId = user.id === thread.admin_id ? thread.worker_id : thread.admin_id;
       const senderProfile = profiles[user.id];
       const senderName = senderProfile?.display_name || senderProfile?.email || '알 수 없음';
-      await sendNotifications({
+      sendNotifications({
         userIds: [recipientId],
         type: 'DM_NEW_MESSAGE',
         title: `${senderName}님의 새 메시지`,
@@ -163,9 +166,6 @@ export default function DMPage() {
         deepLink: `/projects/${projectId}/dm?thread=${activeThreadId}`,
       });
     }
-
-    setBody('');
-    setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
