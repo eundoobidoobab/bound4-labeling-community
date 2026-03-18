@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
