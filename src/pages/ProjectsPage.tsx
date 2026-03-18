@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Plus, FolderOpen, Loader2, LogOut, Bell, Archive, UserX } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Plus, FolderOpen, Loader2, LogOut, Bell, Archive, UserX, User, Settings } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -196,22 +196,35 @@ export default function ProjectsPage() {
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center justify-between">
           <h1 className="text-lg font-bold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/projects')}>바운드포 라벨링</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1">
-                  <span className="text-sm">{role === 'admin' ? '관리자' : '작업자'}</span>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm hidden sm:inline">{role === 'admin' ? '관리자' : '작업자'}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" /> 로그아웃
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground">{role === 'admin' ? '관리자 계정' : '작업자 계정'}</p>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => setDeleteAccountOpen(true)}>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" /> 로그아웃
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-muted-foreground focus:text-destructive focus:bg-destructive/10"
+                  onClick={() => setDeleteAccountOpen(true)}
+                >
                   <UserX className="mr-2 h-4 w-4" /> 회원 탈퇴
                 </DropdownMenuItem>
               </DropdownMenuContent>
