@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Board, Project } from '@/types';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import {
   Sidebar,
   SidebarContent,
@@ -155,6 +156,7 @@ export default function ProjectLayout() {
   const { toast } = useToast();
   const { project, boards, loading } = useProjectLayout(id);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const unreadCount = useUnreadNotifications(user?.id);
 
   const handleLeaveProject = async () => {
     if (!id || !user) return;
@@ -196,8 +198,13 @@ export default function ProjectLayout() {
               프로젝트 목록
             </Button>
             <div className="flex-1" />
-            <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Button>
           </header>
           <main className="flex-1 overflow-auto">

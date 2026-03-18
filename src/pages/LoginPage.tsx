@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Loader2, LogIn, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -71,6 +73,91 @@ export default function LoginPage() {
       setSignUpSuccess(true);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsLoading(false);
+    if (error) {
+      toast({ title: '메일 발송 실패', description: error.message, variant: 'destructive' });
+    } else {
+      setForgotSent(true);
+    }
+  };
+
+  if (forgotSent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm">
+          <Card>
+            <CardContent className="pt-8 pb-6 text-center space-y-4">
+              <div className="flex justify-center">
+                <Mail className="h-16 w-16 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">이메일을 확인해주세요</h2>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{email}</span>
+                (으)로 비밀번호 재설정 메일을 발송했습니다.
+              </p>
+              <p className="text-sm text-muted-foreground">메일함에서 재설정 링크를 클릭해주세요.</p>
+              <Button variant="outline" className="w-full mt-4" onClick={() => { setForgotSent(false); setMode('login'); setEmail(''); }}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                로그인으로 돌아가기
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (mode === 'forgot') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-bold text-foreground">바운드포 라벨링</h1>
+          </div>
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-xl">비밀번호 찾기</CardTitle>
+              <CardDescription>가입한 이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드립니다.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="forgotEmail">이메일</Label>
+                  <Input
+                    id="forgotEmail"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  재설정 메일 보내기
+                </Button>
+              </form>
+              <div className="mt-4 text-center">
+                <button type="button" onClick={() => { setMode('login'); setEmail(''); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <ArrowLeft className="inline mr-1 h-3 w-3" />
+                  로그인으로 돌아가기
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (signUpSuccess) {
     return (
@@ -211,7 +298,16 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 space-y-2 text-center">
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setPassword(''); }}
+                  className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

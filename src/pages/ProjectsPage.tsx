@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProjectsData } from '@/hooks/useProjectsData';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import type { Project } from '@/types';
 import ProjectCard from '@/components/projects/ProjectCard';
 import InvitationSection from '@/components/projects/InvitationSection';
@@ -28,6 +29,7 @@ export default function ProjectsPage() {
   const memberCounts = data?.memberCounts ?? {};
   const joinedProjectIds = data?.joinedProjectIds ?? new Set<string>();
   const invitations = data?.invitations ?? [];
+  const unreadCount = useUnreadNotifications(user?.id);
 
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -45,6 +47,7 @@ export default function ProjectsPage() {
   const [joining, setJoining] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
 
   const isAdmin = role === 'admin';
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -197,8 +200,13 @@ export default function ProjectsPage() {
         <div className="container flex h-14 items-center justify-between">
           <h1 className="text-lg font-bold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/projects')}>바운드포 라벨링</h1>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
               <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -414,21 +422,35 @@ export default function ProjectsPage() {
       </Dialog>
 
       {/* Delete account confirmation */}
-      <AlertDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
+      <AlertDialog open={deleteAccountOpen} onOpenChange={(open) => {
+        setDeleteAccountOpen(open);
+        if (!open) setDeleteConfirmEmail('');
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>회원 탈퇴</AlertDialogTitle>
-            <AlertDialogDescription>
-              {isAdmin
-                ? '정말 탈퇴하시겠습니까? 관리자 계정은 동일 이메일로 다시 가입할 수 있습니다.'
-                : '정말 탈퇴하시겠습니까? 탈퇴 후 재가입 시 새로운 회원으로 처리되며, 기존 데이터는 복구되지 않습니다.'}
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {isAdmin
+                  ? '정말 탈퇴하시겠습니까? 관리자 계정은 동일 이메일로 다시 가입할 수 있습니다.'
+                  : '정말 탈퇴하시겠습니까? 탈퇴 후 재가입 시 새로운 회원으로 처리되며, 기존 데이터는 복구되지 않습니다.'}
+              </span>
+              <span className="block text-sm font-medium text-foreground mt-3">
+                확인을 위해 이메일 주소를 입력해주세요
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Input
+            value={deleteConfirmEmail}
+            onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+            placeholder={user?.email || '이메일 입력'}
+            className="mt-2"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
-              disabled={deleting}
+              disabled={deleting || deleteConfirmEmail !== user?.email}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
