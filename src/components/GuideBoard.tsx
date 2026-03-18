@@ -178,6 +178,17 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           guide_version_id: version.id,
         }, { onConflict: 'project_id' });
 
+      // Notify all project members except the creator
+      const memberIds = await getProjectMemberIds(projectId, [user.id]);
+      await sendNotifications({
+        userIds: memberIds,
+        type: 'GUIDE_UPDATED',
+        title: '새 가이드 문서',
+        body: newTitle.trim(),
+        projectId,
+        deepLink: `/projects/${projectId}/boards/${boardId}`,
+      });
+
       toast({ title: '가이드 문서가 등록되었습니다' });
       setCreateOpen(false);
       setNewTitle('');
