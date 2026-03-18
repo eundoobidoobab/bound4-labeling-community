@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import AllocationBoard from '@/components/AllocationBoard';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useBoardData } from '@/hooks/useBoardData';
 import { useQueryClient } from '@tanstack/react-query';
+import EditableContent from '@/components/EditableContent';
 import type { Board, Project, Notice } from '@/types';
 
 export default function BoardPage() {
