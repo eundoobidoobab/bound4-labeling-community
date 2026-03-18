@@ -56,9 +56,10 @@ export default function ProjectsPage() {
     e.preventDefault();
     if (!newProjectName.trim() || !user) return;
     setCreating(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('projects')
-      .insert({ name: newProjectName.trim(), description: newProjectDesc.trim() || null, created_by: user.id } as any);
+      .insert({ name: newProjectName.trim(), description: newProjectDesc.trim() || null, created_by: user.id } as any)
+      .select();
     setCreating(false);
     if (error) {
       toast({ title: '프로젝트 생성 실패', description: error.message, variant: 'destructive' });
