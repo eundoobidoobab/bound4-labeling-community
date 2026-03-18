@@ -208,11 +208,22 @@ export default function ProjectDetailPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => togglePin(notice)}>
-                                  <Pin className="mr-2 h-4 w-4" />{notice.is_pinned ? '고정 해제' : '고정'}
+                              <DropdownMenuItem onClick={() => togglePin(notice)}>
+                                  <Pin className="mr-2 h-4 w-4" />
+                                  {notice.is_pinned ? '고정 해제' : '고정'}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openReadModal(notice)}>
                                   <Eye className="mr-2 h-4 w-4" />확인율 보기
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={async () => {
+                                    await supabase.from('notices').delete().eq('id', notice.id);
+                                    toast({ title: '공지사항이 삭제되었습니다' });
+                                    fetchNotices();
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />삭제
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
