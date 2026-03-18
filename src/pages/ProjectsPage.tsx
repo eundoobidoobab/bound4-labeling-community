@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,16 +11,24 @@ import { Plus, FolderOpen, Loader2, LogOut, Bell, Archive, UserX } from 'lucide-
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { Project, Invitation } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProjectsData } from '@/hooks/useProjectsData';
+import type { Project } from '@/types';
 import ProjectCard from '@/components/projects/ProjectCard';
 import InvitationSection from '@/components/projects/InvitationSection';
 
 export default function ProjectsPage() {
   const { user, role, signOut } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useProjectsData(user?.id, role);
+  const projects = data?.projects ?? [];
+  const memberCounts = data?.memberCounts ?? {};
+  const joinedProjectIds = data?.joinedProjectIds ?? new Set<string>();
+  const invitations = data?.invitations ?? [];
+
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -32,88 +40,14 @@ export default function ProjectsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const isAdmin = role === 'admin';
-  const [joinedProjectIds, setJoinedProjectIds] = useState<Set<string>>(new Set());
   const [joinDialogProject, setJoinDialogProject] = useState<Project | null>(null);
   const [joinRole, setJoinRole] = useState('');
   const [joining, setJoining] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchProjects = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    let items = (data || []) as Project[];
-    if (!error) {
-      if (role !== 'admin') {
-        items = items.filter(p => p.status === 'ACTIVE');
-      }
-      setProjects(items);
-    }
-
-    if (items.length > 0) {
-      const ids = items.map(p => p.id);
-      const [membersRes, adminsRes] = await Promise.all([
-        supabase.from('project_memberships').select('project_id, worker_id').eq('status', 'ACTIVE').in('project_id', ids),
-        supabase.from('project_admins').select('project_id, admin_id').in('project_id', ids),
-      ]);
-      const countMap: Record<string, number> = {};
-      ids.forEach(id => {
-        const memberUserIds = new Set(
-          (membersRes.data || []).filter((r: any) => r.project_id === id).map((r: any) => r.worker_id)
-        );
-        (adminsRes.data || []).filter((r: any) => r.project_id === id).forEach((r: any) => memberUserIds.add(r.admin_id));
-        countMap[id] = memberUserIds.size;
-      });
-      setMemberCounts(countMap);
-
-      if (isAdmin && user) {
-        const myAdminProjects = new Set(
-          (adminsRes.data || []).filter((r: any) => r.admin_id === user.id).map((r: any) => r.project_id)
-        );
-        setJoinedProjectIds(myAdminProjects);
-      }
-    }
-
-    const { data: profileData } = await supabase.from('profiles').select('email').eq('id', user!.id).single();
-    const userEmail = profileData?.email?.toLowerCase();
-
-    const { data: invData } = userEmail ? await supabase
-      .from('project_invitations')
-      .select('*')
-      .eq('status', 'PENDING')
-      .eq('email', userEmail)
-      .gt('expires_at', new Date().toISOString()) : { data: null };
-
-    if (invData && invData.length > 0) {
-      const projectIds = [...new Set(invData.map((inv: any) => inv.project_id))];
-      const { data: projData } = await supabase.from('projects').select('id, name').in('id', projectIds);
-      const projMap: Record<string, string> = {};
-      (projData || []).forEach((p: any) => { projMap[p.id] = p.name; });
-
-      setInvitations(invData.map((inv: any) => ({
-        ...inv,
-        project_name: projMap[inv.project_id] || '알 수 없는 프로젝트',
-      })));
-    } else {
-      setInvitations([]);
-    }
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (user && role !== null) {
-      fetchProjects();
-    }
-  }, [user, role]);
+  const isAdmin = role === 'admin';
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['projects'] });
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +62,7 @@ export default function ProjectsPage() {
     } else {
       setNewProjectName(''); setNewProjectDesc(''); setDialogOpen(false);
       toast({ title: '프로젝트가 생성되었습니다' });
-      fetchProjects();
+      invalidate();
     }
   };
 
@@ -140,14 +74,14 @@ export default function ProjectsPage() {
       toast({ title: '초대 수락 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '초대를 수락했습니다', description: '프로젝트에 참여되었습니다.' });
-      fetchProjects();
+      invalidate();
     }
   };
 
   const handleDeclineInvitation = async (invitationId: string) => {
     await supabase.from('project_invitations').update({ status: 'EXPIRED' }).eq('id', invitationId);
     toast({ title: '초대를 거절했습니다' });
-    fetchProjects();
+    invalidate();
   };
 
   const openEditDialog = (project: Project, e: React.MouseEvent) => {
@@ -171,7 +105,7 @@ export default function ProjectsPage() {
     } else {
       toast({ title: '프로젝트가 수정되었습니다' });
       setEditDialogOpen(false);
-      fetchProjects();
+      invalidate();
     }
   };
 
@@ -182,7 +116,7 @@ export default function ProjectsPage() {
       toast({ title: '보관 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '프로젝트가 보관되었습니다' });
-      fetchProjects();
+      invalidate();
     }
     setDeleteProject(null);
   };
@@ -194,7 +128,7 @@ export default function ProjectsPage() {
       toast({ title: '활성화 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '프로젝트가 다시 활성화되었습니다' });
-      fetchProjects();
+      invalidate();
     }
   };
 
@@ -222,7 +156,7 @@ export default function ProjectsPage() {
       toast({ title: '프로젝트에 참여했습니다' });
       setJoinDialogProject(null);
       navigate(`/projects/${joinDialogProject.id}`);
-      fetchProjects();
+      invalidate();
     }
   };
 
@@ -331,7 +265,7 @@ export default function ProjectsPage() {
           )}
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
