@@ -224,7 +224,7 @@ export default function DMPage() {
             </div>
           ) : (
             threads.map(thread => {
-              const other = getOtherParticipant(thread);
+              const { profile: other, role: otherRole } = getOtherParticipant(thread);
               const isActive = thread.id === activeThreadId;
               return (
                 <button
@@ -234,15 +234,15 @@ export default function DMPage() {
                 >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                      {(other?.display_name || other?.email || '?').charAt(0).toUpperCase()}
+                      {(other?.display_name || '?').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {other?.display_name || other?.email || '알 수 없음'}
+                      {other?.display_name || '알 수 없음'}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {other?.email || ''}
+                      {otherRole}
                     </p>
                   </div>
                 </button>
