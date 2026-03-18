@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,9 @@ import FeedAttachments from '@/components/FeedAttachments';
 import GuideBoard from '@/components/GuideBoard';
 import AllocationBoard from '@/components/AllocationBoard';
 import { useProfiles } from '@/hooks/useProfiles';
-import type { Board, Project, Notice, Post, Attachment } from '@/types';
+import { useBoardData } from '@/hooks/useBoardData';
+import { useQueryClient } from '@tanstack/react-query';
+import type { Board, Project, Notice } from '@/types';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
@@ -24,54 +26,29 @@ export default function BoardPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
-  const [board, setBoard] = useState<Board | null>(null);
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [noticeAttachments, setNoticeAttachments] = useState<Record<string, Attachment[]>>({});
-  const [postAttachments, setPostAttachments] = useState<Record<string, Attachment[]>>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useBoardData(boardId);
+
+  // Fetch profiles for authors when data changes
+  const board = data?.board ?? null;
+  const notices = data?.notices ?? [];
+  const posts = data?.posts ?? [];
+  const noticeAttachments = data?.noticeAttachments ?? {};
+  const postAttachments = data?.postAttachments ?? {};
+
+  // Fetch profiles when data is available
+  useEffect(() => {
+    if (data?.authorIds && data.authorIds.length > 0) {
+      fetchProfiles(data.authorIds);
+    }
+    if (user) fetchProfiles([user.id]);
+  }, [data?.authorIds, user]);
 
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
 
-  useEffect(() => {
-    if (!boardId) return;
-    fetchData();
-  }, [boardId]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
-    if (boardData) setBoard(boardData as Board);
-
-    if (boardData?.type === 'NOTICE') {
-      const { data } = await supabase.from('notices').select('*').eq('board_id', boardId!).eq('status', 'ACTIVE')
-        .order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
-      const items = (data || []) as Notice[];
-      setNotices(items);
-      if (items.length > 0) {
-        const { data: atts } = await supabase.from('notice_attachments').select('*').in('notice_id', items.map(n => n.id));
-        const map: Record<string, Attachment[]> = {};
-        (atts || []).forEach((a: any) => { (map[a.notice_id] = map[a.notice_id] || []).push(a); });
-        setNoticeAttachments(map);
-        await fetchProfiles(items.map(n => n.created_by));
-      }
-    } else if (['QNA', 'BUG', 'CUSTOM'].includes(boardData?.type || '')) {
-      const { data } = await supabase.from('posts').select('*').eq('board_id', boardId!).eq('status', 'ACTIVE')
-        .order('created_at', { ascending: false });
-      const items = (data || []) as Post[];
-      setPosts(items);
-      if (items.length > 0) {
-        const { data: atts } = await supabase.from('post_attachments').select('*').in('post_id', items.map(p => p.id));
-        const map: Record<string, Attachment[]> = {};
-        (atts || []).forEach((a: any) => { (map[a.post_id] = map[a.post_id] || []).push(a); });
-        setPostAttachments(map);
-        await fetchProfiles(items.map(p => p.author_id));
-      }
-    }
-    if (user) await fetchProfiles([user.id]);
-    setLoading(false);
-  };
+  const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: ['board', boardId] });
 
   const handleCreateNotice = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
     if (!user || !boardId) return;
@@ -81,7 +58,7 @@ export default function BoardPage() {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
     toast({ title: '공지사항이 등록되었습니다' });
-    fetchData();
+    invalidateBoard();
   };
 
   const handleCreatePost = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
@@ -92,15 +69,15 @@ export default function BoardPage() {
       await supabase.from('post_attachments').insert(attachmentPaths.map(a => ({ ...a, post_id: inserted.id })));
     }
     toast({ title: '게시글이 등록되었습니다' });
-    fetchData();
+    invalidateBoard();
   };
 
   const togglePin = async (notice: Notice) => {
     await supabase.from('notices').update({ is_pinned: !notice.is_pinned }).eq('id', notice.id);
-    fetchData();
+    invalidateBoard();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Board, Project } from '@/types';
+import { useProjectLayout } from '@/hooks/useProjectLayout';
 import {
   Sidebar,
   SidebarContent,
@@ -44,8 +44,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Types imported from @/types
+import { useState } from 'react';
 
 const boardIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   NOTICE: Megaphone,
@@ -68,7 +67,6 @@ function ProjectSidebar({ project, boards, onLeave }: { project: Project; boards
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarContent className="bg-card">
-        {/* Project name */}
         <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
             {project.name.charAt(0)}
@@ -76,38 +74,23 @@ function ProjectSidebar({ project, boards, onLeave }: { project: Project; boards
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{project.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {isAdmin ? '관리자' : '작업자'}
-              </p>
+              <p className="text-xs text-muted-foreground">{isAdmin ? '관리자' : '작업자'}</p>
             </div>
           )}
         </div>
 
-        {/* Board navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">
-            게시판
-          </SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">게시판</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {boards.map((board) => {
                 const Icon = boardIcons[board.type] || MessageSquare;
-                const boardPath = board.type === 'NOTICE'
-                  ? `/projects/${id}`
-                  : `/projects/${id}/boards/${board.id}`;
-                const isActive = board.type === 'NOTICE'
-                  ? isProjectHome
-                  : location.pathname === boardPath;
-
+                const boardPath = board.type === 'NOTICE' ? `/projects/${id}` : `/projects/${id}/boards/${board.id}`;
+                const isActive = board.type === 'NOTICE' ? isProjectHome : location.pathname === boardPath;
                 return (
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <NavLink
-                        to={boardPath}
-                        end={board.type === 'NOTICE'}
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
+                      <NavLink to={boardPath} end={board.type === 'NOTICE'} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                         <Icon className="h-4 w-4" />
                         {!collapsed && <span>{board.name}</span>}
                       </NavLink>
@@ -119,59 +102,38 @@ function ProjectSidebar({ project, boards, onLeave }: { project: Project; boards
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Utility links */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">
-            관리
-          </SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">관리</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/dm`}>
-                  <NavLink
-                    to={`/projects/${id}/dm`}
-                    className="hover:bg-muted/50"
-                    activeClassName="bg-primary/10 text-primary font-medium"
-                  >
+                  <NavLink to={`/projects/${id}/dm`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                     <MessageSquare className="h-4 w-4" />
                     {!collapsed && <span>메시지</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/members`}>
-                  <NavLink
-                    to={`/projects/${id}/members`}
-                    className="hover:bg-muted/50"
-                    activeClassName="bg-primary/10 text-primary font-medium"
-                  >
+                  <NavLink to={`/projects/${id}/members`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                     <Users className="h-4 w-4" />
                     {!collapsed && <span>팀 멤버</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
               {isAdmin && (
                 <>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
-                      <NavLink
-                        to={`/projects/${id}/settings`}
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
+                      <NavLink to={`/projects/${id}/settings`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                         <Settings className="h-4 w-4" />
                         {!collapsed && <span>설정</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-
                   <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={onLeave}
-                      className="hover:bg-destructive/10 text-destructive hover:text-destructive cursor-pointer"
-                    >
+                    <SidebarMenuButton onClick={onLeave} className="hover:bg-destructive/10 text-destructive hover:text-destructive cursor-pointer">
                       <LogOut className="h-4 w-4" />
                       {!collapsed && <span>프로젝트 나가기</span>}
                     </SidebarMenuButton>
@@ -189,35 +151,14 @@ function ProjectSidebar({ project, boards, onLeave }: { project: Project; boards
 export default function ProjectLayout() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [project, setProject] = useState<Project | null>(null);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { project, boards, loading } = useProjectLayout(id);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-    const fetchData = async () => {
-      const [projectRes, boardsRes] = await Promise.all([
-        supabase.from('projects').select('*').eq('id', id).single(),
-        supabase.from('boards').select('*').eq('project_id', id).eq('status', 'ACTIVE').order('order_index'),
-      ]);
-      if (projectRes.data) setProject(projectRes.data as Project);
-      if (boardsRes.data) setBoards(boardsRes.data as Board[]);
-      setLoading(false);
-    };
-    fetchData();
-  }, [id]);
 
   const handleLeaveProject = async () => {
     if (!id || !user) return;
-    const { error } = await supabase
-      .from('project_admins')
-      .delete()
-      .eq('project_id', id)
-      .eq('admin_id', user.id);
-
+    const { error } = await supabase.from('project_admins').delete().eq('project_id', id).eq('admin_id', user.id);
     if (error) {
       toast({ title: '나가기 실패', description: error.message, variant: 'destructive' });
     } else {
@@ -265,7 +206,6 @@ export default function ProjectLayout() {
         </div>
       </div>
 
-      {/* Leave project confirmation */}
       <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,33 +14,10 @@ import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
+import { useMembersData, type Member, type Admin, type MemberInvitation } from '@/hooks/useMembersData';
 
 import type { Project, Board } from '@/types';
-
-interface Member {
-  id: string;
-  worker_id: string;
-  status: string;
-  created_at: string;
-  display_name: string | null;
-  email: string;
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  status: string;
-  created_at: string;
-  expires_at: string;
-}
-
-interface Admin {
-  id: string;
-  admin_id: string;
-  display_name: string | null;
-  email: string;
-  custom_role: string | null;
-}
 
 interface SearchUser {
   id: string;
@@ -56,11 +33,14 @@ export default function MembersPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [members, setMembers] = useState<Member[]>([]);
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useMembersData(projectId);
+  const members = data?.members ?? [];
+  const admins = data?.admins ?? [];
+  const invitations = data?.invitations ?? [];
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['members', projectId] });
 
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
@@ -74,48 +54,6 @@ export default function MembersPage() {
   const [editingAdminId, setEditingAdminId] = useState<string | null>(null);
   const [editRoleValue, setEditRoleValue] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-
-  useEffect(() => {
-    fetchAll();
-  }, [projectId]);
-
-  const fetchAll = async () => {
-    if (!projectId) return;
-    setLoading(true);
-
-    const [membersRes, adminsRes, invitationsRes] = await Promise.all([
-      supabase.from('project_memberships').select('*').eq('project_id', projectId).eq('status', 'ACTIVE'),
-      supabase.from('project_admins').select('*').eq('project_id', projectId),
-      supabase.from('project_invitations').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-    ]);
-
-    const workerIds = (membersRes.data || []).map((m: any) => m.worker_id);
-    const adminIds = (adminsRes.data || []).map((a: any) => a.admin_id);
-    const allIds = [...new Set([...workerIds, ...adminIds])];
-
-    let profileMap: Record<string, { display_name: string | null; email: string }> = {};
-    if (allIds.length > 0) {
-      const { data: profiles } = await supabase.from('profiles').select('id, display_name, email').in('id', allIds);
-      (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
-    }
-
-    setMembers((membersRes.data || []).map((m: any) => ({
-      ...m,
-      display_name: profileMap[m.worker_id]?.display_name || null,
-      email: profileMap[m.worker_id]?.email || m.worker_id,
-    })));
-
-    setAdmins((adminsRes.data || []).map((a: any) => ({
-      id: a.id,
-      admin_id: a.admin_id,
-      display_name: profileMap[a.admin_id]?.display_name || null,
-      email: profileMap[a.admin_id]?.email || a.admin_id,
-      custom_role: a.custom_role || null,
-    })));
-
-    setInvitations((invitationsRes.data || []) as Invitation[]);
-    setLoading(false);
-  };
 
   const handleSearchUsers = useCallback(async (query: string) => {
     setSearchQuery(query);
@@ -180,7 +118,7 @@ export default function MembersPage() {
     } else {
       toast({ title: '초대가 전송되었습니다', description: `${targetUser.display_name || targetUser.email}에게 초대를 보냈습니다.` });
       setSearchResults(prev => prev.filter(u => u.id !== targetUser.id));
-      fetchAll();
+      invalidate();
     }
   };
 
@@ -208,14 +146,14 @@ export default function MembersPage() {
       toast({ title: '초대가 전송되었습니다', description: `${inviteEmail}에게 초대를 보냈습니다.` });
       setInviteEmail('');
       setDialogOpen(false);
-      fetchAll();
+      invalidate();
     }
   };
 
   const removeMember = async (membershipId: string) => {
     await supabase.from('project_memberships').update({ status: 'REMOVED' }).eq('id', membershipId);
     toast({ title: '멤버가 제거되었습니다' });
-    fetchAll();
+    invalidate();
   };
 
   const startEditRole = (admin: Admin) => {
@@ -233,12 +171,12 @@ export default function MembersPage() {
       toast({ title: '역할 수정 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '역할이 수정되었습니다' });
-      setAdmins(prev => prev.map(a => a.id === adminRowId ? { ...a, custom_role: editRoleValue.trim() || null } : a));
+      invalidate();
     }
     setEditingAdminId(null);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -289,8 +227,6 @@ export default function MembersPage() {
   ];
 
   const isCurrentUserAdmin = admins.some(a => a.admin_id === user?.id);
-
-  // Workers only see admins
   const visibleMembers = isCurrentUserAdmin ? allMembers : allMembers.filter(m => m.isAdmin);
 
   const filteredMembers = isCurrentUserAdmin
@@ -311,7 +247,7 @@ export default function MembersPage() {
       toast({ title: '초대 취소 실패', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: '초대가 취소되었습니다' });
-      fetchAll();
+      invalidate();
     }
   };
 
