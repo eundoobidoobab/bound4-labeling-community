@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { sendNotifications } from '@/lib/notifications';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
