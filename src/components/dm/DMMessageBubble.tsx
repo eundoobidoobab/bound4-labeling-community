@@ -80,7 +80,7 @@ export default function DMMessageBubble({
           )}
         </div>
       )}
-      <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[70%] min-w-0 ${isMine ? 'items-end' : 'items-start'}`}>
         {showAvatar && !isMine && (
           <p className="text-xs text-muted-foreground mb-1 ml-1">{senderName}</p>
         )}
