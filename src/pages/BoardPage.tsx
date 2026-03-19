@@ -253,10 +253,10 @@ export default function BoardPage() {
 
       {isForum && (
         <div className="space-y-4">
-          {posts.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">등록된 게시글이 없습니다</p>
+          {filteredPosts.length === 0 ? (
+            <p className="py-12 text-center text-muted-foreground">{q ? '검색 결과가 없습니다' : '등록된 게시글이 없습니다'}</p>
           ) : (
-            posts.map((post, i) => {
+            filteredPosts.map((post, i) => {
               const author = profiles[post.author_id];
               return (
                 <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
