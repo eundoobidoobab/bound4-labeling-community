@@ -1,16 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { RotateCw, ZoomIn, Pen, Crop, Undo2, Palette } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  RotateCw, ZoomIn, Pen, Crop, Undo2, Redo2,
+  Eraser, Trash2, Circle, Check, X, Minus,
+} from 'lucide-react';
 
-type EditorMode = 'crop' | 'draw';
+type EditorMode = 'draw' | 'crop';
+type DrawTool = 'pen' | 'eraser';
 
 interface DrawPath {
   points: { x: number; y: number }[];
   color: string;
   width: number;
+  compositeOp: GlobalCompositeOperation;
 }
 
 interface ImageEditorProps {
@@ -21,9 +27,17 @@ interface ImageEditorProps {
 }
 
 const PEN_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#000000', '#ffffff',
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#3b82f6', '#8b5cf6', '#ec4899', '#000000', '#ffffff',
 ];
-const PEN_SIZES = [2, 4, 8, 12];
+
+const PEN_SIZES = [
+  { value: 2, label: '극세' },
+  { value: 4, label: '세' },
+  { value: 8, label: '중' },
+  { value: 14, label: '굵' },
+  { value: 24, label: '극굵' },
+];
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
   const image = new Image();
@@ -34,9 +48,11 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation: number, drawPaths: DrawPath[], drawCanvasSize: { w: number; h: number } | null): Promise<Blob> {
+async function getCroppedImg(
+  imageSrc: string, pixelCrop: Area, rotation: number,
+  drawPaths: DrawPath[], drawCanvasSize: { w: number; h: number } | null
+): Promise<Blob> {
   const image = await loadImage(imageSrc);
-
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
 
@@ -54,14 +70,13 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation: number
   ctx.translate(-image.width / 2, -image.height / 2);
   ctx.drawImage(image, 0, 0);
 
-  // Draw paths on full-size canvas before cropping
   if (drawPaths.length > 0 && drawCanvasSize) {
     const scaleX = bBoxWidth / drawCanvasSize.w;
     const scaleY = bBoxHeight / drawCanvasSize.h;
-    // Reset transform for drawing
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (const path of drawPaths) {
       if (path.points.length < 2) continue;
+      ctx.globalCompositeOperation = path.compositeOp;
       ctx.strokeStyle = path.color;
       ctx.lineWidth = path.width * Math.max(scaleX, scaleY);
       ctx.lineCap = 'round';
@@ -73,6 +88,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation: number
       }
       ctx.stroke();
     }
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -87,7 +103,9 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation: number
 }
 
 export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEditorProps) {
-  const [mode, setMode] = useState<EditorMode>('crop');
+  // Default to draw mode since it's most used
+  const [mode, setMode] = useState<EditorMode>('draw');
+  const [drawTool, setDrawTool] = useState<DrawTool>('pen');
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -96,13 +114,14 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
 
   // Drawing state
   const [drawPaths, setDrawPaths] = useState<DrawPath[]>([]);
+  const [undonePaths, setUndonePaths] = useState<DrawPath[]>([]);
   const [penColor, setPenColor] = useState('#ef4444');
   const [penSize, setPenSize] = useState(4);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [drawCanvasSize, setDrawCanvasSize] = useState<{ w: number; h: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedAreaPixels(croppedPixels);
@@ -116,7 +135,7 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
     }
   }, [mode, open]);
 
-  // Redraw canvas when paths change
+  // Redraw canvas
   useEffect(() => {
     if (mode !== 'draw' || !drawCanvasRef.current || !drawCanvasSize) return;
     const canvas = drawCanvasRef.current;
@@ -126,6 +145,7 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const path of drawPaths) {
       if (path.points.length < 2) continue;
+      ctx.globalCompositeOperation = path.compositeOp;
       ctx.strokeStyle = path.color;
       ctx.lineWidth = path.width;
       ctx.lineCap = 'round';
@@ -137,7 +157,40 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
       }
       ctx.stroke();
     }
+    ctx.globalCompositeOperation = 'source-over';
   }, [drawPaths, drawCanvasSize, mode]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Redo
+          setUndonePaths(prev => {
+            if (prev.length === 0) return prev;
+            const last = prev[prev.length - 1];
+            setDrawPaths(p => [...p, last]);
+            return prev.slice(0, -1);
+          });
+        } else {
+          // Undo
+          setDrawPaths(prev => {
+            if (prev.length === 0) return prev;
+            const last = prev[prev.length - 1];
+            setUndonePaths(p => [...p, last]);
+            return prev.slice(0, -1);
+          });
+        }
+      }
+      if (e.key === 'e' || e.key === 'E') {
+        setDrawTool(prev => prev === 'eraser' ? 'pen' : 'eraser');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open]);
 
   const getCanvasPoint = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = drawCanvasRef.current;
@@ -152,13 +205,20 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
     const point = getCanvasPoint(e);
     if (!point) return;
     setIsDrawing(true);
-    setDrawPaths(prev => [...prev, { points: [point], color: penColor, width: penSize }]);
+    setUndonePaths([]); // Clear redo stack on new stroke
+    const newPath: DrawPath = {
+      points: [point],
+      color: drawTool === 'eraser' ? '#000000' : penColor,
+      width: drawTool === 'eraser' ? penSize * 3 : penSize,
+      compositeOp: drawTool === 'eraser' ? 'destination-out' : 'source-over',
+    };
+    setDrawPaths(prev => [...prev, newPath]);
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing) return;
     const point = getCanvasPoint(e);
-    if (!point) return;
+    if (point) setCursorPos(point);
+    if (!isDrawing || !point) return;
     setDrawPaths(prev => {
       const updated = [...prev];
       const last = { ...updated[updated.length - 1] };
@@ -170,7 +230,26 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
 
   const stopDrawing = () => setIsDrawing(false);
 
-  const undoDraw = () => setDrawPaths(prev => prev.slice(0, -1));
+  const undoDraw = () => {
+    setDrawPaths(prev => {
+      if (prev.length === 0) return prev;
+      setUndonePaths(p => [...p, prev[prev.length - 1]]);
+      return prev.slice(0, -1);
+    });
+  };
+
+  const redoDraw = () => {
+    setUndonePaths(prev => {
+      if (prev.length === 0) return prev;
+      setDrawPaths(p => [...p, prev[prev.length - 1]]);
+      return prev.slice(0, -1);
+    });
+  };
+
+  const clearAll = () => {
+    setUndonePaths([...undonePaths, ...drawPaths]);
+    setDrawPaths([]);
+  };
 
   const handleSave = async () => {
     if (!croppedAreaPixels) return;
@@ -185,135 +264,278 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
 
   const handleRotate = () => setRotation((r) => (r + 90) % 360);
 
+  const currentSize = drawTool === 'eraser' ? penSize * 3 : penSize;
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-4 pb-2">
-          <DialogTitle>이미지 편집</DialogTitle>
-        </DialogHeader>
-
-        {/* Mode tabs */}
-        <div className="flex border-b border-border px-4">
-          <button
-            onClick={() => setMode('crop')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'crop' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-          >
-            <Crop className="h-3.5 w-3.5" /> 자르기
-          </button>
-          <button
-            onClick={() => setMode('draw')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'draw' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-          >
-            <Pen className="h-3.5 w-3.5" /> 그리기
-          </button>
-        </div>
-
-        {/* Canvas area */}
-        <div ref={containerRef} className="relative w-full h-[350px] bg-black">
-          {mode === 'crop' ? (
-            <Cropper
-              image={imageSrc}
-              crop={crop}
-              zoom={zoom}
-              rotation={rotation}
-              aspect={undefined}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onRotationChange={setRotation}
-              onCropComplete={onCropComplete}
-            />
-          ) : (
-            <>
-              <img
-                src={imageSrc}
-                alt="편집 중"
-                className="w-full h-full object-contain"
-                draggable={false}
-              />
-              <canvas
-                ref={drawCanvasRef}
-                className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Controls */}
-        <div className="px-4 py-3 space-y-3">
-          {mode === 'crop' ? (
-            <>
-              {/* Zoom */}
-              <div className="flex items-center gap-3">
-                <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Slider
-                  value={[zoom]}
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  onValueChange={([v]) => setZoom(v)}
-                  className="flex-1"
-                />
-                <span className="text-xs text-muted-foreground w-10 text-right">{zoom.toFixed(1)}x</span>
-              </div>
-              {/* Rotate */}
-              <div className="flex items-center justify-between">
-                <Button variant="outline" size="sm" onClick={handleRotate}>
-                  <RotateCw className="h-4 w-4 mr-1" /> 회전
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Pen controls */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Color swatches */}
-                <div className="flex items-center gap-1.5">
-                  {PEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setPenColor(c)}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform ${penColor === c ? 'border-primary scale-110' : 'border-border'}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-                <div className="h-5 w-px bg-border" />
-                {/* Pen size */}
-                <div className="flex items-center gap-1">
-                  {PEN_SIZES.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setPenSize(s)}
-                      className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${penSize === s ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
-                    >
-                      <div className="rounded-full bg-current" style={{ width: s + 2, height: s + 2 }} />
-                    </button>
-                  ))}
-                </div>
-                <div className="h-5 w-px bg-border" />
-                {/* Undo */}
-                <Button variant="ghost" size="sm" onClick={undoDraw} disabled={drawPaths.length === 0}>
-                  <Undo2 className="h-4 w-4 mr-1" /> 실행취소
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* Save / Cancel */}
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>취소</Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? '처리 중...' : '적용'}
+      <DialogContent className="max-w-2xl w-[95vw] p-0 gap-0 overflow-hidden">
+        {/* Top bar with mode switch and actions */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-card">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+            <button
+              onClick={() => setMode('draw')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                mode === 'draw'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Pen className="h-3.5 w-3.5" /> 그리기
+            </button>
+            <button
+              onClick={() => setMode('crop')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                mode === 'crop'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Crop className="h-3.5 w-3.5" /> 자르기
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground gap-1">
+              <X className="h-4 w-4" /> 취소
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+              {saving ? (
+                <span className="animate-pulse">처리 중...</span>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" /> 적용
+                </>
+              )}
             </Button>
           </div>
         </div>
+
+        {/* Canvas area */}
+        <div className="relative bg-black/90">
+          <div
+            ref={containerRef}
+            className="relative w-full"
+            style={{ height: 'min(60vh, 480px)' }}
+            onMouseLeave={() => setCursorPos(null)}
+          >
+            {mode === 'crop' ? (
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                aspect={undefined}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onRotationChange={setRotation}
+                onCropComplete={onCropComplete}
+              />
+            ) : (
+              <>
+                <img
+                  src={imageSrc}
+                  alt="편집 중"
+                  className="w-full h-full object-contain"
+                  draggable={false}
+                />
+                <canvas
+                  ref={drawCanvasRef}
+                  className="absolute inset-0 w-full h-full touch-none"
+                  style={{ cursor: 'none' }}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={(e) => { stopDrawing(); setCursorPos(null); }}
+                  onTouchStart={startDrawing}
+                  onTouchMove={draw}
+                  onTouchEnd={stopDrawing}
+                />
+                {/* Custom cursor */}
+                {cursorPos && mode === 'draw' && (
+                  <div
+                    className="pointer-events-none absolute rounded-full border-2 -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: cursorPos.x,
+                      top: cursorPos.y,
+                      width: currentSize,
+                      height: currentSize,
+                      borderColor: drawTool === 'eraser' ? 'rgba(255,255,255,0.8)' : penColor,
+                      backgroundColor: drawTool === 'eraser' ? 'rgba(255,255,255,0.2)' : `${penColor}33`,
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Floating draw toolbar */}
+          {mode === 'draw' && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-background/95 backdrop-blur-md rounded-2xl shadow-xl border border-border px-3 py-2">
+              {/* Tool toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setDrawTool('pen')}
+                    className={`flex items-center justify-center h-9 w-9 rounded-xl transition-all ${
+                      drawTool === 'pen'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <Pen className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>펜 (E키로 전환)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setDrawTool('eraser')}
+                    className={`flex items-center justify-center h-9 w-9 rounded-xl transition-all ${
+                      drawTool === 'eraser'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <Eraser className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>지우개 (E키로 전환)</TooltipContent>
+              </Tooltip>
+
+              <div className="h-6 w-px bg-border mx-1" />
+
+              {/* Colors */}
+              {drawTool === 'pen' && (
+                <>
+                  <div className="flex items-center gap-1">
+                    {PEN_COLORS.map((c) => (
+                      <Tooltip key={c}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setPenColor(c)}
+                            className={`w-7 h-7 rounded-full border-2 transition-all ${
+                              penColor === c
+                                ? 'border-foreground scale-110 shadow-sm'
+                                : 'border-transparent hover:scale-105'
+                            }`}
+                          >
+                            <div
+                              className="w-full h-full rounded-full"
+                              style={{ backgroundColor: c, boxShadow: c === '#ffffff' ? 'inset 0 0 0 1px hsl(var(--border))' : undefined }}
+                            />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">{c}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                  <div className="h-6 w-px bg-border mx-1" />
+                </>
+              )}
+
+              {/* Pen size */}
+              <div className="flex items-center gap-0.5">
+                {PEN_SIZES.map(({ value, label }) => (
+                  <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setPenSize(value)}
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+                          penSize === value
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        <div
+                          className="rounded-full"
+                          style={{
+                            width: Math.min(value + 2, 16),
+                            height: Math.min(value + 2, 16),
+                            backgroundColor: drawTool === 'pen' ? penColor : 'currentColor',
+                          }}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="text-xs">{label} ({value}px)</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+
+              <div className="h-6 w-px bg-border mx-1" />
+
+              {/* Undo / Redo / Clear */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={undoDraw}
+                    disabled={drawPaths.length === 0}
+                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>실행취소 (Ctrl+Z)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={redoDraw}
+                    disabled={undonePaths.length === 0}
+                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>다시실행 (Ctrl+Shift+Z)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={clearAll}
+                    disabled={drawPaths.length === 0}
+                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>전체 지우기</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+        </div>
+
+        {/* Crop controls */}
+        {mode === 'crop' && (
+          <div className="px-4 py-3 space-y-3 bg-card">
+            <div className="flex items-center gap-3">
+              <ZoomIn className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Slider
+                value={[zoom]}
+                min={1}
+                max={3}
+                step={0.1}
+                onValueChange={([v]) => setZoom(v)}
+                className="flex-1"
+              />
+              <span className="text-xs text-muted-foreground w-10 text-right">{zoom.toFixed(1)}x</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRotate}>
+              <RotateCw className="h-4 w-4 mr-1" /> 90° 회전
+            </Button>
+          </div>
+        )}
+
+        {/* Stroke count indicator for draw mode */}
+        {mode === 'draw' && drawPaths.length > 0 && (
+          <div className="px-4 py-2 bg-card border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              {drawPaths.length}개 획 · <span className="text-foreground/60">Ctrl+Z 실행취소 · E 지우개 전환</span>
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
