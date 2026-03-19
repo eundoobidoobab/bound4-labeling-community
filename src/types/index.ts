@@ -1,19 +1,29 @@
 // Shared domain types used across the application
 
+export type BoardType = 'NOTICE' | 'GUIDE' | 'QNA' | 'ALLOCATION' | 'BUG' | 'CUSTOM';
+export type BoardStatus = 'ACTIVE' | 'ARCHIVED';
+export type PostStatus = 'ACTIVE' | 'ARCHIVED';
+export type ProjectStatus = 'ACTIVE' | 'ARCHIVED';
+export type MembershipStatus = 'ACTIVE' | 'REMOVED';
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED';
+export type AppRole = 'admin' | 'worker';
+
 export interface Project {
   id: string;
   name: string;
   description?: string | null;
-  status: string;
+  status: ProjectStatus;
   created_at: string;
+  created_by: string;
 }
 
 export interface Board {
   id: string;
   name: string;
-  type: string;
+  type: BoardType;
   order_index: number;
-  status: string;
+  status: BoardStatus;
+  project_id: string;
 }
 
 export interface Profile {
@@ -28,7 +38,7 @@ export interface Notice {
   body: string;
   created_at: string;
   created_by: string;
-  status: string;
+  status: PostStatus;
   is_pinned: boolean;
   board_id: string;
 }
@@ -39,7 +49,7 @@ export interface Post {
   body: string;
   author_id: string;
   created_at: string;
-  status: string;
+  status: PostStatus;
   board_id: string;
 }
 
@@ -55,7 +65,7 @@ export interface Invitation {
   id: string;
   project_id: string;
   email: string;
-  status: string;
+  status: InvitationStatus;
   expires_at: string;
   created_at: string;
   project_name?: string;
