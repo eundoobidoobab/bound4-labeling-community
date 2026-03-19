@@ -499,8 +499,8 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
                 </Tooltip>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Crop controls */}
         {mode === 'crop' && (
