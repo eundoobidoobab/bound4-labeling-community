@@ -367,142 +367,137 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
             )}
           </div>
 
-          {/* Floating draw toolbar */}
+          {/* Floating draw toolbar - two rows for clarity */}
           {mode === 'draw' && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-background/95 backdrop-blur-md rounded-2xl shadow-xl border border-border px-3 py-2">
-              {/* Tool toggle */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setDrawTool('pen')}
-                    className={`flex items-center justify-center h-9 w-9 rounded-xl transition-all ${
-                      drawTool === 'pen'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    <Pen className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>펜 (E키로 전환)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setDrawTool('eraser')}
-                    className={`flex items-center justify-center h-9 w-9 rounded-xl transition-all ${
-                      drawTool === 'eraser'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    <Eraser className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>지우개 (E키로 전환)</TooltipContent>
-              </Tooltip>
-
-              <div className="h-6 w-px bg-border mx-1" />
-
-              {/* Colors */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-auto max-w-[95%] bg-background/95 backdrop-blur-md rounded-2xl shadow-xl border border-border px-3 py-2.5 space-y-2">
+              {/* Row 1: Colors */}
               {drawTool === 'pen' && (
-                <>
-                  <div className="flex items-center gap-1">
-                    {PEN_COLORS.map((c) => (
-                      <Tooltip key={c}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => setPenColor(c)}
-                            className={`w-7 h-7 rounded-full border-2 transition-all ${
-                              penColor === c
-                                ? 'border-foreground scale-110 shadow-sm'
-                                : 'border-transparent hover:scale-105'
-                            }`}
-                          >
-                            <div
-                              className="w-full h-full rounded-full"
-                              style={{ backgroundColor: c, boxShadow: c === '#ffffff' ? 'inset 0 0 0 1px hsl(var(--border))' : undefined }}
-                            />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="text-xs">{c}</TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                  <div className="h-6 w-px bg-border mx-1" />
-                </>
+                <div className="flex items-center justify-center gap-1.5">
+                  {PEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setPenColor(c)}
+                      className={`w-7 h-7 rounded-full transition-all ${
+                        penColor === c
+                          ? 'ring-2 ring-offset-2 ring-primary ring-offset-background scale-110'
+                          : 'hover:scale-110'
+                      }`}
+                      style={{
+                        backgroundColor: c,
+                        boxShadow: c === '#ffffff' ? 'inset 0 0 0 1.5px hsl(var(--border))' : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
               )}
 
-              {/* Pen size */}
-              <div className="flex items-center gap-0.5">
-                {PEN_SIZES.map(({ value, label }) => (
-                  <Tooltip key={value}>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => setPenSize(value)}
-                        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
-                          penSize === value
-                            ? 'bg-primary/15 text-primary'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                        }`}
-                      >
-                        <div
-                          className="rounded-full"
-                          style={{
-                            width: Math.min(value + 2, 16),
-                            height: Math.min(value + 2, 16),
-                            backgroundColor: drawTool === 'pen' ? penColor : 'currentColor',
-                          }}
-                        />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-xs">{label} ({value}px)</TooltipContent>
-                  </Tooltip>
-                ))}
+              {/* Row 2: Tools + Sizes + Actions */}
+              <div className="flex items-center justify-center gap-1">
+                {/* Pen / Eraser */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDrawTool('pen')}
+                      className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all ${
+                        drawTool === 'pen'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <Pen className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>펜</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDrawTool('eraser')}
+                      className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all ${
+                        drawTool === 'eraser'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <Eraser className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>지우개 (E)</TooltipContent>
+                </Tooltip>
+
+                <div className="h-5 w-px bg-border mx-1" />
+
+                {/* Pen sizes with label */}
+                <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg px-1 py-0.5">
+                  {PEN_SIZES.map(({ value, label }) => (
+                    <Tooltip key={value}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setPenSize(value)}
+                          className={`flex items-center justify-center w-7 h-7 rounded-md transition-all ${
+                            penSize === value
+                              ? 'bg-background shadow-sm'
+                              : 'hover:bg-background/50'
+                          }`}
+                        >
+                          <div
+                            className="rounded-full bg-foreground"
+                            style={{
+                              width: Math.max(Math.min(value * 0.8 + 2, 14), 3),
+                              height: Math.max(Math.min(value * 0.8 + 2, 14), 3),
+                              opacity: penSize === value ? 1 : 0.4,
+                            }}
+                          />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="text-xs">{label} ({value}px)</TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+
+                <div className="h-5 w-px bg-border mx-1" />
+
+                {/* Undo / Redo / Clear */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={undoDraw}
+                      disabled={drawPaths.length === 0}
+                      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-all"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>실행취소 (⌘Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={redoDraw}
+                      disabled={undonePaths.length === 0}
+                      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-25 disabled:pointer-events-none transition-all"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>다시실행 (⌘⇧Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={clearAll}
+                      disabled={drawPaths.length === 0}
+                      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-25 disabled:pointer-events-none transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>전체 지우기</TooltipContent>
+                </Tooltip>
               </div>
-
-              <div className="h-6 w-px bg-border mx-1" />
-
-              {/* Undo / Redo / Clear */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={undoDraw}
-                    disabled={drawPaths.length === 0}
-                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-all"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>실행취소 (Ctrl+Z)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={redoDraw}
-                    disabled={undonePaths.length === 0}
-                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-all"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>다시실행 (Ctrl+Shift+Z)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={clearAll}
-                    disabled={drawPaths.length === 0}
-                    className="flex items-center justify-center h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:pointer-events-none transition-all"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>전체 지우기</TooltipContent>
-              </Tooltip>
             </div>
           )}
         </div>
