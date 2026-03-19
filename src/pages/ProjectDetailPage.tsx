@@ -3,21 +3,17 @@ import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, Eye, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
-import FeedComments from '@/components/FeedComments';
-import EditableContent from '@/components/EditableContent';
+import { Loader2, Pin } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
-import FeedAttachments from '@/components/FeedAttachments';
+import { NoticeCard } from '@/components/FeedCards';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Notice, Attachment, Project, Board } from '@/types';
 
 interface ReadInfo {
@@ -33,10 +29,7 @@ export default function ProjectDetailPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
-
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Read tracking modal
@@ -50,41 +43,56 @@ export default function ProjectDetailPage() {
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
 
-  useEffect(() => {
-    if (!noticeBoard) { setLoading(false); return; }
-    fetchNotices();
-  }, [noticeBoard]);
+  // Fetch notices with react-query
+  const { data: queryData, isLoading } = useQuery({
+    queryKey: ['projectDetail', noticeBoard?.id],
+    queryFn: async () => {
+      if (!noticeBoard) return { notices: [] as Notice[], attachments: {} as Record<string, Attachment[]> };
 
+      const { data } = await supabase.from('notices').select('*').eq('board_id', noticeBoard.id).eq('status', 'ACTIVE')
+        .order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
+      const items = (data || []) as Notice[];
+
+      let attachmentMap: Record<string, Attachment[]> = {};
+      if (items.length > 0) {
+        const { data: atts } = await supabase.from('notice_attachments').select('*').in('notice_id', items.map(n => n.id));
+        (atts || []).forEach((a: any) => { (attachmentMap[a.notice_id] = attachmentMap[a.notice_id] || []).push(a); });
+      }
+
+      return { notices: items, attachments: attachmentMap };
+    },
+    enabled: !!noticeBoard,
+  });
+
+  const notices = queryData?.notices ?? [];
+  const attachments = queryData?.attachments ?? {};
+
+  // Fetch profiles & mark as read
   useEffect(() => {
     if (user) fetchProfiles([user.id]);
   }, [user]);
 
-  const fetchNotices = async () => {
-    if (!noticeBoard) return;
-    const { data } = await supabase.from('notices').select('*').eq('board_id', noticeBoard.id).eq('status', 'ACTIVE')
-      .order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
-    const items = (data || []) as Notice[];
-    setNotices(items);
-    setLoading(false);
-
-    if (items.length > 0) {
-      const { data: atts } = await supabase.from('notice_attachments').select('*').in('notice_id', items.map(n => n.id));
-      const map: Record<string, Attachment[]> = {};
-      (atts || []).forEach((a: any) => { (map[a.notice_id] = map[a.notice_id] || []).push(a); });
-      setAttachments(map);
-      await fetchProfiles(items.map(n => n.created_by));
+  useEffect(() => {
+    if (notices.length > 0) {
+      fetchProfiles(notices.map(n => n.created_by));
     }
+  }, [notices]);
 
-    if (user && items.length > 0) {
-      const noticeIds = items.map(n => n.id);
+  useEffect(() => {
+    if (!user || notices.length === 0) return;
+    const markRead = async () => {
+      const noticeIds = notices.map(n => n.id);
       const { data: existing } = await supabase.from('notice_reads').select('notice_id').eq('user_id', user.id).in('notice_id', noticeIds);
       const readSet = new Set((existing || []).map((r: any) => r.notice_id));
       const unread = noticeIds.filter(id => !readSet.has(id));
       if (unread.length > 0) {
         await supabase.from('notice_reads').insert(unread.map(notice_id => ({ notice_id, user_id: user.id })));
       }
-    }
-  };
+    };
+    markRead();
+  }, [notices, user]);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['projectDetail', noticeBoard?.id] });
 
   const handleCreate = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
     if (!user || !noticeBoard) return;
@@ -93,25 +101,12 @@ export default function ProjectDetailPage() {
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
-    // Notify all project members except the creator
     if (projectId) {
       const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({
-        userIds: memberIds,
-        type: 'NOTICE_PUBLISHED',
-        title: '새 공지사항',
-        body: title,
-        projectId,
-        deepLink: `/projects/${projectId}`,
-      });
+      await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: '새 공지사항', body: title, projectId, deepLink: `/projects/${projectId}` });
     }
     toast({ title: '공지사항이 등록되었습니다' });
-    fetchNotices();
-  };
-
-  const togglePin = async (notice: Notice) => {
-    await supabase.from('notices').update({ is_pinned: !notice.is_pinned }).eq('id', notice.id);
-    fetchNotices();
+    invalidate();
   };
 
   const openReadModal = async (notice: Notice) => {
@@ -150,7 +145,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -175,92 +170,35 @@ export default function ProjectDetailPage() {
           <div className="space-y-4">
             {notices.length === 0 ? (
               <p className="py-12 text-center text-muted-foreground">등록된 공지사항이 없습니다</p>
-            ) : (
-              notices.map((notice, i) => {
-                const author = profiles[notice.created_by];
-                return (
-                  <motion.div key={notice.id} id={`notice-${notice.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                    <Card className={notice.is_pinned ? 'border-primary/30 bg-primary/5' : ''}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                                <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
-                                {notice.is_pinned && (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-                                    <Pin className="h-3 w-3" /> 고정
-                                  </span>
-                                )}
-                              </div>
-                              <CardTitle className="text-base mt-1">{notice.title}</CardTitle>
-                            </div>
-                          </div>
-                          {role === 'admin' && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingId(notice.id)}>
-                                  <Pencil className="mr-2 h-4 w-4" />수정
-                                </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => togglePin(notice)}>
-                                  <Pin className="mr-2 h-4 w-4" />
-                                  {notice.is_pinned ? '고정 해제' : '고정'}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openReadModal(notice)}>
-                                  <Eye className="mr-2 h-4 w-4" />확인율 보기
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={async () => {
-                                    await supabase.from('notices').delete().eq('id', notice.id);
-                                    toast({ title: '공지사항이 삭제되었습니다' });
-                                    fetchNotices();
-                                  }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />삭제
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pl-16">
-                        {editingId === notice.id ? (
-                          <EditableContent
-                            title={notice.title}
-                            body={notice.body}
-                            onSave={async (title, body) => {
-                              await supabase.from('notices').update({ title, body }).eq('id', notice.id);
-                              toast({ title: '공지사항이 수정되었습니다' });
-                              setEditingId(null);
-                              fetchNotices();
-                            }}
-                            onCancel={() => setEditingId(null)}
-                          />
-                        ) : (
-                          <>
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
-                            <FeedAttachments attachments={attachments[notice.id] || []} />
-                            <FeedComments type="notice" parentId={notice.id} />
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })
-            )}
+            ) : notices.map((notice, i) => (
+              <motion.div key={notice.id} id={`notice-${notice.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                <NoticeCard
+                  notice={notice}
+                  author={profiles[notice.created_by]}
+                  attachments={attachments[notice.id] || []}
+                  isAdmin={role === 'admin'}
+                  isEditing={editingId === notice.id}
+                  onEdit={() => setEditingId(notice.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onSave={async (title, body) => {
+                    await supabase.from('notices').update({ title, body }).eq('id', notice.id);
+                    toast({ title: '공지사항이 수정되었습니다' });
+                    setEditingId(null);
+                    invalidate();
+                  }}
+                  onDelete={async () => {
+                    await supabase.from('notices').delete().eq('id', notice.id);
+                    toast({ title: '공지사항이 삭제되었습니다' });
+                    invalidate();
+                  }}
+                  onTogglePin={async () => {
+                    await supabase.from('notices').update({ is_pinned: !notice.is_pinned }).eq('id', notice.id);
+                    invalidate();
+                  }}
+                  onViewReads={() => openReadModal(notice)}
+                />
+              </motion.div>
+            ))}
           </div>
         </>
       )}
