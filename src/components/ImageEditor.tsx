@@ -127,29 +127,62 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
     setCroppedAreaPixels(croppedPixels);
   }, []);
 
-  // Set up draw canvas size using ResizeObserver for reliability
+  // Set up draw canvas size reliably (portal mount + resize)
   useEffect(() => {
-    if (!open || !containerRef.current) return;
-    const el = containerRef.current;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setDrawCanvasSize({ w: width, h: height });
-        }
+    if (!open) return;
+
+    let rafId: number | null = null;
+
+    const updateCanvasSize = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      if (width > 0 && height > 0) {
+        setDrawCanvasSize((prev) => {
+          if (prev?.w === width && prev?.h === height) return prev;
+          return { w: width, h: height };
+        });
       }
-    });
+    };
+
+    // Measure immediately and once more on next frame (after dialog animation/layout)
+    updateCanvasSize();
+    rafId = requestAnimationFrame(updateCanvasSize);
+
+    const el = containerRef.current;
+    if (!el) {
+      return () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
+      };
+    }
+
+    const observer = new ResizeObserver(() => updateCanvasSize());
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [open]);
+
+    return () => {
+      observer.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [open, mode]);
 
   // Redraw canvas
   useEffect(() => {
-    if (mode !== 'draw' || !drawCanvasRef.current || !drawCanvasSize) return;
+    if (mode !== 'draw' || !drawCanvasRef.current) return;
     const canvas = drawCanvasRef.current;
-    canvas.width = drawCanvasSize.w;
-    canvas.height = drawCanvasSize.h;
-    const ctx = canvas.getContext('2d')!;
+    const rect = canvas.getBoundingClientRect();
+
+    const width = drawCanvasSize?.w ?? Math.round(rect.width);
+    const height = drawCanvasSize?.h ?? Math.round(rect.height);
+    if (width <= 0 || height <= 0) return;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const path of drawPaths) {
       if (path.points.length < 2) continue;
@@ -210,6 +243,16 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = drawCanvasRef.current;
+    if (canvas && !drawCanvasSize) {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      if (width > 0 && height > 0) {
+        setDrawCanvasSize({ w: width, h: height });
+      }
+    }
+
     const point = getCanvasPoint(e);
     if (!point) return;
     setIsDrawing(true);
