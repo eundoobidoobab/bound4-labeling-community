@@ -397,16 +397,34 @@ export default function DMPage() {
                   onClick={() => selectThread(thread.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 border-b border-border ${isActive ? 'bg-primary/5' : ''}`}
                 >
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                      {(other?.display_name || '?').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative shrink-0">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                        {(other?.display_name || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {(thread.unreadCount ?? 0) > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                        {thread.unreadCount! > 99 ? '99+' : thread.unreadCount}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {other?.display_name || '알 수 없음'}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm truncate ${(thread.unreadCount ?? 0) > 0 ? 'font-bold text-foreground' : 'font-medium text-foreground'}`}>
+                        {other?.display_name || '알 수 없음'}
+                      </p>
+                      {thread.lastMessage && (
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {formatDistanceToNow(new Date(thread.lastMessage.created_at), { addSuffix: true, locale: ko })}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs truncate mt-0.5 ${(thread.unreadCount ?? 0) > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {thread.lastMessage
+                        ? (thread.lastMessage.sender_id === user?.id ? '나: ' : '') + (thread.lastMessage.body || '📎 첨부파일')
+                        : otherRole}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">{otherRole}</p>
                   </div>
                 </button>
               );
