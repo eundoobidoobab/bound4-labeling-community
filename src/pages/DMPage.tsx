@@ -165,12 +165,59 @@ export default function DMPage() {
       .order('created_at', { ascending: false });
 
     const items = (data || []) as Thread[];
-    setThreads(items);
 
     const ids = new Set<string>();
     items.forEach(t => { ids.add(t.admin_id); ids.add(t.worker_id); });
     ids.add(user.id);
-    await fetchProfiles([...ids]);
+
+    const threadIds = items.map(t => t.id);
+    const [, messagesRes, cursorsRes] = await Promise.all([
+      fetchProfiles([...ids]),
+      threadIds.length > 0
+        ? supabase
+            .from('dm_messages')
+            .select('thread_id, body, created_at, sender_id')
+            .in('thread_id', threadIds)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      threadIds.length > 0
+        ? supabase
+            .from('dm_read_cursors')
+            .select('thread_id, user_id, last_read_at')
+            .in('thread_id', threadIds)
+            .eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const lastMsgMap: Record<string, { body: string; created_at: string; sender_id: string }> = {};
+    (messagesRes.data || []).forEach((m: any) => {
+      if (!lastMsgMap[m.thread_id]) {
+        lastMsgMap[m.thread_id] = { body: m.body, created_at: m.created_at, sender_id: m.sender_id };
+      }
+    });
+
+    const cursorMap: Record<string, string> = {};
+    (cursorsRes.data || []).forEach((c: any) => {
+      cursorMap[c.thread_id] = c.last_read_at;
+    });
+
+    const allMessages = (messagesRes.data || []) as any[];
+    const enrichedThreads = items.map(t => {
+      const lastMsg = lastMsgMap[t.id] || null;
+      const myLastRead = cursorMap[t.id];
+      const unreadCount = myLastRead
+        ? allMessages.filter(m => m.thread_id === t.id && m.sender_id !== user.id && new Date(m.created_at) > new Date(myLastRead)).length
+        : allMessages.filter(m => m.thread_id === t.id && m.sender_id !== user.id).length;
+      return { ...t, lastMessage: lastMsg, unreadCount };
+    });
+
+    enrichedThreads.sort((a, b) => {
+      const aTime = a.lastMessage?.created_at || a.created_at;
+      const bTime = b.lastMessage?.created_at || b.created_at;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+
+    setThreads(enrichedThreads);
     setLoading(false);
   }, [projectId, user, fetchProfiles]);
 
