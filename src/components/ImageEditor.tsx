@@ -306,10 +306,9 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
   };
 
   const handleSave = async () => {
-    if (!croppedAreaPixels) return;
     setSaving(true);
     try {
-      const blob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation, drawPaths, drawCanvasSize);
+      const blob = await getEditedImg(imageSrc, croppedAreaPixels, rotation, drawPaths, drawCanvasSize);
       onSave(blob);
     } finally {
       setSaving(false);
