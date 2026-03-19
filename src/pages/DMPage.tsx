@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { sendNotifications } from '@/lib/notifications';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -16,6 +18,8 @@ interface Thread {
   worker_id: string;
   project_id: string;
   created_at: string;
+  lastMessage?: { body: string; created_at: string; sender_id: string } | null;
+  unreadCount?: number;
 }
 
 interface Message {
@@ -161,12 +165,59 @@ export default function DMPage() {
       .order('created_at', { ascending: false });
 
     const items = (data || []) as Thread[];
-    setThreads(items);
 
     const ids = new Set<string>();
     items.forEach(t => { ids.add(t.admin_id); ids.add(t.worker_id); });
     ids.add(user.id);
-    await fetchProfiles([...ids]);
+
+    const threadIds = items.map(t => t.id);
+    const [, messagesRes, cursorsRes] = await Promise.all([
+      fetchProfiles([...ids]),
+      threadIds.length > 0
+        ? supabase
+            .from('dm_messages')
+            .select('thread_id, body, created_at, sender_id')
+            .in('thread_id', threadIds)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      threadIds.length > 0
+        ? supabase
+            .from('dm_read_cursors')
+            .select('thread_id, user_id, last_read_at')
+            .in('thread_id', threadIds)
+            .eq('user_id', user.id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const lastMsgMap: Record<string, { body: string; created_at: string; sender_id: string }> = {};
+    (messagesRes.data || []).forEach((m: any) => {
+      if (!lastMsgMap[m.thread_id]) {
+        lastMsgMap[m.thread_id] = { body: m.body, created_at: m.created_at, sender_id: m.sender_id };
+      }
+    });
+
+    const cursorMap: Record<string, string> = {};
+    (cursorsRes.data || []).forEach((c: any) => {
+      cursorMap[c.thread_id] = c.last_read_at;
+    });
+
+    const allMessages = (messagesRes.data || []) as any[];
+    const enrichedThreads = items.map(t => {
+      const lastMsg = lastMsgMap[t.id] || null;
+      const myLastRead = cursorMap[t.id];
+      const unreadCount = myLastRead
+        ? allMessages.filter(m => m.thread_id === t.id && m.sender_id !== user.id && new Date(m.created_at) > new Date(myLastRead)).length
+        : allMessages.filter(m => m.thread_id === t.id && m.sender_id !== user.id).length;
+      return { ...t, lastMessage: lastMsg, unreadCount };
+    });
+
+    enrichedThreads.sort((a, b) => {
+      const aTime = a.lastMessage?.created_at || a.created_at;
+      const bTime = b.lastMessage?.created_at || b.created_at;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+
+    setThreads(enrichedThreads);
     setLoading(false);
   }, [projectId, user, fetchProfiles]);
 
@@ -346,16 +397,34 @@ export default function DMPage() {
                   onClick={() => selectThread(thread.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 border-b border-border ${isActive ? 'bg-primary/5' : ''}`}
                 >
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                      {(other?.display_name || '?').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative shrink-0">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                        {(other?.display_name || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {(thread.unreadCount ?? 0) > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                        {thread.unreadCount! > 99 ? '99+' : thread.unreadCount}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {other?.display_name || '알 수 없음'}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm truncate ${(thread.unreadCount ?? 0) > 0 ? 'font-bold text-foreground' : 'font-medium text-foreground'}`}>
+                        {other?.display_name || '알 수 없음'}
+                      </p>
+                      {thread.lastMessage && (
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {formatDistanceToNow(new Date(thread.lastMessage.created_at), { addSuffix: true, locale: ko })}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs truncate mt-0.5 ${(thread.unreadCount ?? 0) > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {thread.lastMessage
+                        ? (thread.lastMessage.sender_id === user?.id ? '나: ' : '') + (thread.lastMessage.body || '📎 첨부파일')
+                        : otherRole}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">{otherRole}</p>
                   </div>
                 </button>
               );
