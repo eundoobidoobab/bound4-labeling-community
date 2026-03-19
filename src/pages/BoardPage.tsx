@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal, Trash2, Pencil, Search, X } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
