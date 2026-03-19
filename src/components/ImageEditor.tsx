@@ -48,8 +48,8 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function getCroppedImg(
-  imageSrc: string, pixelCrop: Area, rotation: number,
+async function getEditedImg(
+  imageSrc: string, pixelCrop: Area | null, rotation: number,
   drawPaths: DrawPath[], drawCanvasSize: { w: number; h: number } | null
 ): Promise<Blob> {
   const image = await loadImage(imageSrc);
@@ -91,11 +91,14 @@ async function getCroppedImg(
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height);
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-  ctx.putImageData(data, 0, 0);
+  // Apply crop if specified, otherwise use full image
+  if (pixelCrop) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height);
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+    ctx.putImageData(data, 0, 0);
+  }
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.92);
