@@ -3,25 +3,18 @@ import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal, Trash2, Pencil, Search, X } from 'lucide-react';
-import FeedComments from '@/components/FeedComments';
-import { formatDateTime } from '@/lib/formatDate';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
-import FeedAttachments from '@/components/FeedAttachments';
+import { NoticeCard, PostCard } from '@/components/FeedCards';
 import GuideBoard from '@/components/GuideBoard';
 import AllocationBoard from '@/components/AllocationBoard';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useBoardData } from '@/hooks/useBoardData';
 import { useQueryClient } from '@tanstack/react-query';
-import EditableContent from '@/components/EditableContent';
-import type { Board, Project, Notice } from '@/types';
+import type { Board, Project } from '@/types';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
@@ -34,24 +27,19 @@ export default function BoardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data, isLoading } = useBoardData(boardId);
 
-  // Fetch profiles for authors when data changes
   const board = data?.board ?? null;
   const notices = data?.notices ?? [];
   const posts = data?.posts ?? [];
   const noticeAttachments = data?.noticeAttachments ?? {};
   const postAttachments = data?.postAttachments ?? {};
 
-  // Fetch profiles when data is available
   useEffect(() => {
-    if (data?.authorIds && data.authorIds.length > 0) {
-      fetchProfiles(data.authorIds);
-    }
+    if (data?.authorIds && data.authorIds.length > 0) fetchProfiles(data.authorIds);
     if (user) fetchProfiles([user.id]);
   }, [data?.authorIds, user]);
 
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
-
   const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: ['board', boardId] });
 
   const q = searchQuery.toLowerCase().trim();
@@ -63,6 +51,7 @@ export default function BoardPage() {
     q ? posts.filter(p => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q)) : posts,
     [posts, q]
   );
+
   const handleCreateNotice = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
     if (!user || !boardId) return;
     const { data: inserted, error } = await supabase.from('notices').insert({ board_id: boardId, title, body, created_by: user.id }).select().single();
@@ -70,16 +59,8 @@ export default function BoardPage() {
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
-    // Notify all project members except the creator
     const memberIds = await getProjectMemberIds(project.id, [user.id]);
-    await sendNotifications({
-      userIds: memberIds,
-      type: 'NOTICE_PUBLISHED',
-      title: '새 공지사항',
-      body: title,
-      projectId: project.id,
-      deepLink: `/projects/${project.id}/boards/${boardId}`,
-    });
+    await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: '새 공지사항', body: title, projectId: project.id, deepLink: `/projects/${project.id}/boards/${boardId}` });
     toast({ title: '공지사항이 등록되었습니다' });
     invalidateBoard();
   };
@@ -92,11 +73,6 @@ export default function BoardPage() {
       await supabase.from('post_attachments').insert(attachmentPaths.map(a => ({ ...a, post_id: inserted.id })));
     }
     toast({ title: '게시글이 등록되었습니다' });
-    invalidateBoard();
-  };
-
-  const togglePin = async (notice: Notice) => {
-    await supabase.from('notices').update({ is_pinned: !notice.is_pinned }).eq('id', notice.id);
     invalidateBoard();
   };
 
@@ -144,12 +120,7 @@ export default function BoardPage() {
       {(isNotice || isForum) && (notices.length > 0 || posts.length > 0) && (
         <div className="mb-4 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="제목 또는 내용으로 검색..."
-            className="pl-9 pr-9"
-          />
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="제목 또는 내용으로 검색..." className="pl-9 pr-9" />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
@@ -165,89 +136,34 @@ export default function BoardPage() {
         <div className="space-y-4">
           {filteredNotices.length === 0 ? (
             <p className="py-12 text-center text-muted-foreground">{q ? '검색 결과가 없습니다' : '등록된 공지사항이 없습니다'}</p>
-          ) : (
-            filteredNotices.map((notice, i) => {
-              const author = profiles[notice.created_by];
-              return (
-                <motion.div key={notice.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                  <Card className={notice.is_pinned ? 'border-primary/30 bg-primary/5' : ''}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                              {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                              <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
-                              {notice.is_pinned && (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-                                  <Pin className="h-3 w-3" /> 고정
-                                </span>
-                              )}
-                            </div>
-                            <CardTitle className="text-base mt-1">{notice.title}</CardTitle>
-                          </div>
-                        </div>
-                        {role === 'admin' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingId(notice.id)}>
-                                <Pencil className="mr-2 h-4 w-4" />수정
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => togglePin(notice)}>
-                                <Pin className="mr-2 h-4 w-4" />
-                                {notice.is_pinned ? '고정 해제' : '고정'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={async () => {
-                                  await supabase.from('notices').delete().eq('id', notice.id);
-                                  toast({ title: '공지사항이 삭제되었습니다' });
-                                  invalidateBoard();
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />삭제
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pl-16">
-                      {editingId === notice.id ? (
-                        <EditableContent
-                          title={notice.title}
-                          body={notice.body}
-                          onSave={async (title, body) => {
-                            await supabase.from('notices').update({ title, body }).eq('id', notice.id);
-                            toast({ title: '공지사항이 수정되었습니다' });
-                            setEditingId(null);
-                            invalidateBoard();
-                          }}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      ) : (
-                        <>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
-                          <FeedAttachments attachments={noticeAttachments[notice.id] || []} />
-                          <FeedComments type="notice" parentId={notice.id} />
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })
-          )}
+          ) : filteredNotices.map((notice, i) => (
+            <motion.div key={notice.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+              <NoticeCard
+                notice={notice}
+                author={profiles[notice.created_by]}
+                attachments={noticeAttachments[notice.id] || []}
+                isAdmin={role === 'admin'}
+                isEditing={editingId === notice.id}
+                onEdit={() => setEditingId(notice.id)}
+                onCancelEdit={() => setEditingId(null)}
+                onSave={async (title, body) => {
+                  await supabase.from('notices').update({ title, body }).eq('id', notice.id);
+                  toast({ title: '공지사항이 수정되었습니다' });
+                  setEditingId(null);
+                  invalidateBoard();
+                }}
+                onDelete={async () => {
+                  await supabase.from('notices').delete().eq('id', notice.id);
+                  toast({ title: '공지사항이 삭제되었습니다' });
+                  invalidateBoard();
+                }}
+                onTogglePin={async () => {
+                  await supabase.from('notices').update({ is_pinned: !notice.is_pinned }).eq('id', notice.id);
+                  invalidateBoard();
+                }}
+              />
+            </motion.div>
+          ))}
         </div>
       )}
 
@@ -255,80 +171,30 @@ export default function BoardPage() {
         <div className="space-y-4">
           {filteredPosts.length === 0 ? (
             <p className="py-12 text-center text-muted-foreground">{q ? '검색 결과가 없습니다' : '등록된 게시글이 없습니다'}</p>
-          ) : (
-            filteredPosts.map((post, i) => {
-              const author = profiles[post.author_id];
-              return (
-                <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                              {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                              <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
-                            </div>
-                            <CardTitle className="text-base mt-1">{post.title}</CardTitle>
-                          </div>
-                        </div>
-                        {(post.author_id === user?.id || role === 'admin') && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingId(post.id)}>
-                                <Pencil className="mr-2 h-4 w-4" />수정
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={async () => {
-                                  await supabase.from('posts').delete().eq('id', post.id);
-                                  toast({ title: '게시글이 삭제되었습니다' });
-                                  invalidateBoard();
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />삭제
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pl-16">
-                      {editingId === post.id ? (
-                        <EditableContent
-                          title={post.title}
-                          body={post.body}
-                          onSave={async (title, body) => {
-                            await supabase.from('posts').update({ title, body }).eq('id', post.id);
-                            toast({ title: '게시글이 수정되었습니다' });
-                            setEditingId(null);
-                            invalidateBoard();
-                          }}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      ) : (
-                        <>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
-                          <FeedAttachments attachments={postAttachments[post.id] || []} />
-                          <FeedComments type="post" parentId={post.id} />
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })
-          )}
+          ) : filteredPosts.map((post, i) => (
+            <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+              <PostCard
+                post={post}
+                author={profiles[post.author_id]}
+                attachments={postAttachments[post.id] || []}
+                canManage={post.author_id === user?.id || role === 'admin'}
+                isEditing={editingId === post.id}
+                onEdit={() => setEditingId(post.id)}
+                onCancelEdit={() => setEditingId(null)}
+                onSave={async (title, body) => {
+                  await supabase.from('posts').update({ title, body }).eq('id', post.id);
+                  toast({ title: '게시글이 수정되었습니다' });
+                  setEditingId(null);
+                  invalidateBoard();
+                }}
+                onDelete={async () => {
+                  await supabase.from('posts').delete().eq('id', post.id);
+                  toast({ title: '게시글이 삭제되었습니다' });
+                  invalidateBoard();
+                }}
+              />
+            </motion.div>
+          ))}
         </div>
       )}
     </div>
