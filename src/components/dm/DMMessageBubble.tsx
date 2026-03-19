@@ -80,7 +80,7 @@ export default function DMMessageBubble({
           )}
         </div>
       )}
-      <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[70%] min-w-0 ${isMine ? 'items-end' : 'items-start'}`}>
         {showAvatar && !isMine && (
           <p className="text-xs text-muted-foreground mb-1 ml-1">{senderName}</p>
         )}
@@ -88,7 +88,7 @@ export default function DMMessageBubble({
         {/* Text bubble */}
         {body && (
           <div
-            className={`rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${
+            className={`rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words overflow-hidden ${
               isMine
                 ? 'bg-primary text-primary-foreground rounded-br-md'
                 : 'bg-muted text-foreground rounded-bl-md'
