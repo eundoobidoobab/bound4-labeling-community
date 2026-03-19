@@ -268,7 +268,7 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl w-[95vw] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl w-[95vw] p-0 gap-0 overflow-hidden [&>button[class*='absolute']]:hidden">
         {/* Top bar with mode switch and actions */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-card">
           <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
@@ -366,10 +366,11 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
               </>
             )}
           </div>
+        </div>
 
-          {/* Floating draw toolbar - two rows for clarity */}
-          {mode === 'draw' && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-auto max-w-[95%] bg-background/95 backdrop-blur-md rounded-2xl shadow-xl border border-border px-3 py-2.5 space-y-2">
+        {/* Draw toolbar - below image */}
+        {mode === 'draw' && (
+          <div className="flex flex-col items-center bg-card border-t border-border px-3 py-2.5 space-y-2">
               {/* Row 1: Colors */}
               {drawTool === 'pen' && (
                 <div className="flex items-center justify-center gap-1.5">
@@ -500,7 +501,6 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
               </div>
             </div>
           )}
-        </div>
 
         {/* Crop controls */}
         {mode === 'crop' && (
