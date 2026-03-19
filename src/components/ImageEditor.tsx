@@ -127,13 +127,21 @@ export default function ImageEditor({ open, imageSrc, onClose, onSave }: ImageEd
     setCroppedAreaPixels(croppedPixels);
   }, []);
 
-  // Set up draw canvas size
+  // Set up draw canvas size using ResizeObserver for reliability
   useEffect(() => {
-    if (mode === 'draw' && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDrawCanvasSize({ w: rect.width, h: rect.height });
-    }
-  }, [mode, open]);
+    if (!open || !containerRef.current) return;
+    const el = containerRef.current;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDrawCanvasSize({ w: width, h: height });
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [open]);
 
   // Redraw canvas
   useEffect(() => {
