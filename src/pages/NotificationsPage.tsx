@@ -46,6 +46,28 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [user]);
 
+  // Realtime subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        const newNotif = payload.new as Notification;
+        setNotifications(prev => {
+          if (prev.some(n => n.id === newNotif.id)) return prev;
+          return [newNotif, ...prev];
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   const markAsRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     setNotifications((prev) =>
