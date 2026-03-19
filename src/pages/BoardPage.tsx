@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Loader2, Pin, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
+import { Loader2, Pin, MoreHorizontal, Trash2, Pencil, Search, X } from 'lucide-react';
 import FeedComments from '@/components/FeedComments';
 import { formatDateTime } from '@/lib/formatDate';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ export default function BoardPage() {
   const { profiles, fetchProfiles } = useProfiles();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
   const { data, isLoading } = useBoardData(boardId);
 
   // Fetch profiles for authors when data changes
@@ -53,6 +54,15 @@ export default function BoardPage() {
 
   const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: ['board', boardId] });
 
+  const q = searchQuery.toLowerCase().trim();
+  const filteredNotices = useMemo(() =>
+    q ? notices.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q)) : notices,
+    [notices, q]
+  );
+  const filteredPosts = useMemo(() =>
+    q ? posts.filter(p => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q)) : posts,
+    [posts, q]
+  );
   const handleCreateNotice = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
     if (!user || !boardId) return;
     const { data: inserted, error } = await supabase.from('notices').insert({ board_id: boardId, title, body, created_by: user.id }).select().single();
@@ -131,15 +141,32 @@ export default function BoardPage() {
         </div>
       )}
 
+      {(isNotice || isForum) && (notices.length > 0 || posts.length > 0) && (
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="제목 또는 내용으로 검색..."
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {isAllocation && <AllocationBoard boardId={boardId!} projectId={project.id} />}
       {isGuide && <GuideBoard boardId={boardId!} projectId={project.id} />}
 
       {isNotice && (
         <div className="space-y-4">
-          {notices.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">등록된 공지사항이 없습니다</p>
+          {filteredNotices.length === 0 ? (
+            <p className="py-12 text-center text-muted-foreground">{q ? '검색 결과가 없습니다' : '등록된 공지사항이 없습니다'}</p>
           ) : (
-            notices.map((notice, i) => {
+            filteredNotices.map((notice, i) => {
               const author = profiles[notice.created_by];
               return (
                 <motion.div key={notice.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -226,10 +253,10 @@ export default function BoardPage() {
 
       {isForum && (
         <div className="space-y-4">
-          {posts.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">등록된 게시글이 없습니다</p>
+          {filteredPosts.length === 0 ? (
+            <p className="py-12 text-center text-muted-foreground">{q ? '검색 결과가 없습니다' : '등록된 게시글이 없습니다'}</p>
           ) : (
-            posts.map((post, i) => {
+            filteredPosts.map((post, i) => {
               const author = profiles[post.author_id];
               return (
                 <motion.div key={post.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
