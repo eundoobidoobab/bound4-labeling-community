@@ -31,7 +31,7 @@ export default function BoardPage() {
   const { profiles, fetchProfiles } = useProfiles();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
   const { data, isLoading } = useBoardData(boardId);
 
   // Fetch profiles for authors when data changes
