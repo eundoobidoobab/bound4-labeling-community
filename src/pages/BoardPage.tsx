@@ -54,6 +54,15 @@ export default function BoardPage() {
 
   const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: ['board', boardId] });
 
+  const q = searchQuery.toLowerCase().trim();
+  const filteredNotices = useMemo(() =>
+    q ? notices.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q)) : notices,
+    [notices, q]
+  );
+  const filteredPosts = useMemo(() =>
+    q ? posts.filter(p => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q)) : posts,
+    [posts, q]
+  );
   const handleCreateNotice = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
     if (!user || !boardId) return;
     const { data: inserted, error } = await supabase.from('notices').insert({ board_id: boardId, title, body, created_by: user.id }).select().single();
