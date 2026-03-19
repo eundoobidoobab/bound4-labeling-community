@@ -16,6 +16,8 @@ interface Thread {
   worker_id: string;
   project_id: string;
   created_at: string;
+  lastMessage?: { body: string; created_at: string; sender_id: string } | null;
+  unreadCount?: number;
 }
 
 interface Message {
