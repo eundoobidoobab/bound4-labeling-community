@@ -64,10 +64,7 @@ export default function MembersPage() {
     setSearching(true);
 
     const { data } = await supabase
-      .from('profiles')
-      .select('id, display_name, email')
-      .or(`email.ilike.%${query.trim()}%,display_name.ilike.%${query.trim()}%`)
-      .limit(20);
+      .rpc('search_profiles_for_invite', { _query: query.trim(), _limit: 20 });
 
     if (data) {
       const existingIds = new Set([

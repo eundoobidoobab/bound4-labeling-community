@@ -93,7 +93,7 @@ export default function FeedComposer({ userDisplayName, projectId, placeholder =
     const results = [];
     for (const { file } of files) {
       const ext = file.name.split('.').pop();
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${projectId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from('board_attachments').upload(path, file);
       if (!error) {
         results.push({ file_path: path, file_name: file.name, file_size: file.size, mime_type: file.type || 'application/octet-stream' });
