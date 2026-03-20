@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toastError } from '@/lib/errorUtils';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -24,7 +25,7 @@ export default function ProjectLayout() {
     if (!id || !user) return;
     const { error } = await supabase.from('project_admins').delete().eq('project_id', id).eq('admin_id', user.id);
     if (error) {
-      toast({ title: '나가기 실패', description: error.message, variant: 'destructive' });
+      toast(toastError(error, '나가기 실패'));
     } else {
       toast({ title: '프로젝트에서 나갔습니다' });
       navigate('/projects');
