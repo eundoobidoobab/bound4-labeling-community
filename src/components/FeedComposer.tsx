@@ -16,12 +16,13 @@ interface UploadedFile {
 
 interface FeedComposerProps {
   userDisplayName: string;
+  projectId: string;
   placeholder?: string;
   titlePlaceholder?: string;
   onSubmit: (data: { title: string; body: string; attachmentPaths: { file_path: string; file_name: string; file_size: number; mime_type: string }[] }) => Promise<void>;
 }
 
-export default function FeedComposer({ userDisplayName, placeholder = '내용을 입력하세요...', titlePlaceholder = '제목', onSubmit }: FeedComposerProps) {
+export default function FeedComposer({ userDisplayName, projectId, placeholder = '내용을 입력하세요...', titlePlaceholder = '제목', onSubmit }: FeedComposerProps) {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -92,7 +93,7 @@ export default function FeedComposer({ userDisplayName, placeholder = '내용을
     const results = [];
     for (const { file } of files) {
       const ext = file.name.split('.').pop();
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${projectId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from('board_attachments').upload(path, file);
       if (!error) {
         results.push({ file_path: path, file_name: file.name, file_size: file.size, mime_type: file.type || 'application/octet-stream' });

@@ -929,6 +929,10 @@ export type Database = {
         Args: { _invitation_id: string }
         Returns: undefined
       }
+      can_read_profile: {
+        Args: { _profile_id: string; _reader_id: string }
+        Returns: boolean
+      }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
@@ -947,6 +951,14 @@ export type Database = {
       is_project_admin: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
+      }
+      search_profiles_for_invite: {
+        Args: { _limit?: number; _query: string }
+        Returns: {
+          display_name: string
+          email: string
+          id: string
+        }[]
       }
     }
     Enums: {
