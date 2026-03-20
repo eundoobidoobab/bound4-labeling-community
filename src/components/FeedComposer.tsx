@@ -16,6 +16,7 @@ interface UploadedFile {
 
 interface FeedComposerProps {
   userDisplayName: string;
+  projectId: string;
   placeholder?: string;
   titlePlaceholder?: string;
   onSubmit: (data: { title: string; body: string; attachmentPaths: { file_path: string; file_name: string; file_size: number; mime_type: string }[] }) => Promise<void>;
