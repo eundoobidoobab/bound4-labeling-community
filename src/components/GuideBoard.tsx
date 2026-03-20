@@ -147,7 +147,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
 
     try {
       const ext = newFile.name.split('.').pop();
-      const filePath = `${crypto.randomUUID()}.${ext}`;
+      const filePath = `${projectId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, newFile);
       if (uploadError) throw uploadError;
 
