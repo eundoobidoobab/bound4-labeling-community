@@ -141,7 +141,7 @@ export default function ProjectDetailPage() {
 
       {role === 'admin' && (
         <div className="mb-6">
-          <FeedComposer userDisplayName={userDisplayName} placeholder="공지사항을 작성하세요..." titlePlaceholder="공지 제목" onSubmit={handleCreate} />
+          <FeedComposer userDisplayName={userDisplayName} projectId={project.id} placeholder="공지사항을 작성하세요..." titlePlaceholder="공지 제목" onSubmit={handleCreate} />
         </div>
       )}
 
