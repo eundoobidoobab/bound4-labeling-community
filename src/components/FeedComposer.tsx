@@ -22,7 +22,7 @@ interface FeedComposerProps {
   onSubmit: (data: { title: string; body: string; attachmentPaths: { file_path: string; file_name: string; file_size: number; mime_type: string }[] }) => Promise<void>;
 }
 
-export default function FeedComposer({ userDisplayName, placeholder = '내용을 입력하세요...', titlePlaceholder = '제목', onSubmit }: FeedComposerProps) {
+export default function FeedComposer({ userDisplayName, projectId, placeholder = '내용을 입력하세요...', titlePlaceholder = '제목', onSubmit }: FeedComposerProps) {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
