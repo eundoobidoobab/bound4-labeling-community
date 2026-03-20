@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toastError } from '@/lib/errorUtils';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
