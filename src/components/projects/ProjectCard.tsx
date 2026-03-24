@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Archive, RotateCcw, CalendarDays, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, Archive, RotateCcw, CalendarDays, Users, Trash2 } from 'lucide-react';
 import type { Project } from '@/types';
 
 interface ProjectCardProps {
