@@ -22,7 +22,7 @@ interface ProjectCardProps {
 
 export default function ProjectCard({
   project, index, isArchived = false, isAdmin, isJoined, memberCount,
-  onClick, onEdit, onArchive, onReactivate,
+  onClick, onEdit, onArchive, onReactivate, onDelete,
 }: ProjectCardProps) {
   return (
     <motion.div
