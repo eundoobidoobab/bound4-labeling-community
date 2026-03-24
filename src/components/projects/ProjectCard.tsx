@@ -58,9 +58,22 @@ export default function ProjectCard({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {isArchived ? (
-                    <DropdownMenuItem onClick={(e) => onReactivate(project.id, e as any)}>
-                      <RotateCcw className="mr-2 h-4 w-4" /> 활성화
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={(e) => onReactivate(project.id, e as any)}>
+                        <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                      </DropdownMenuItem>
+                      {onDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => { e.stopPropagation(); onDelete(project); }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> 영구 삭제
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
                   ) : (
                     <DropdownMenuItem
                       className="text-destructive"
