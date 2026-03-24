@@ -143,6 +143,20 @@ export default function ProjectsPage() {
     }
   };
 
+  const handlePermanentDeleteProject = async () => {
+    if (!permanentDeleteProject) return;
+    setPermanentDeleting(true);
+    const { error } = await supabase.rpc('delete_project_permanently', { _project_id: permanentDeleteProject.id });
+    setPermanentDeleting(false);
+    if (error) {
+      toast({ title: '삭제 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '프로젝트가 영구 삭제되었습니다' });
+      invalidate();
+    }
+    setPermanentDeleteProject(null);
+    setDeleteProjectConfirmName('');
+  };
   const handleProjectClick = (project: Project) => {
     if (isAdmin && !joinedProjectIds.has(project.id)) {
       setJoinDialogProject(project);
