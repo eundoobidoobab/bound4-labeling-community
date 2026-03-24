@@ -48,6 +48,9 @@ export default function ProjectsPage() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [permanentDeleteProject, setPermanentDeleteProject] = useState<Project | null>(null);
+  const [permanentDeleting, setPermanentDeleting] = useState(false);
+  const [deleteProjectConfirmName, setDeleteProjectConfirmName] = useState('');
 
   const isAdmin = role === 'admin';
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['projects'] });
