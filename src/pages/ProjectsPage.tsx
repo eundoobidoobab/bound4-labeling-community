@@ -370,6 +370,7 @@ export default function ProjectsPage() {
                           onEdit={openEditDialog}
                           onArchive={setDeleteProject}
                           onReactivate={handleReactivateProject}
+                          onDelete={setPermanentDeleteProject}
                         />
                       ))}
                     </div>
