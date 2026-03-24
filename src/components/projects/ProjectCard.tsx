@@ -17,6 +17,7 @@ interface ProjectCardProps {
   onEdit: (project: Project, e: React.MouseEvent) => void;
   onArchive: (project: Project) => void;
   onReactivate: (projectId: string, e: React.MouseEvent) => void;
+  onDelete?: (project: Project) => void;
 }
 
 export default function ProjectCard({
