@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Archive, RotateCcw, CalendarDays, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, Archive, RotateCcw, CalendarDays, Users, Trash2 } from 'lucide-react';
 import type { Project } from '@/types';
 
 interface ProjectCardProps {
@@ -17,11 +17,12 @@ interface ProjectCardProps {
   onEdit: (project: Project, e: React.MouseEvent) => void;
   onArchive: (project: Project) => void;
   onReactivate: (projectId: string, e: React.MouseEvent) => void;
+  onDelete?: (project: Project) => void;
 }
 
 export default function ProjectCard({
   project, index, isArchived = false, isAdmin, isJoined, memberCount,
-  onClick, onEdit, onArchive, onReactivate,
+  onClick, onEdit, onArchive, onReactivate, onDelete,
 }: ProjectCardProps) {
   return (
     <motion.div
@@ -57,9 +58,22 @@ export default function ProjectCard({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {isArchived ? (
-                    <DropdownMenuItem onClick={(e) => onReactivate(project.id, e as any)}>
-                      <RotateCcw className="mr-2 h-4 w-4" /> 활성화
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={(e) => onReactivate(project.id, e as any)}>
+                        <RotateCcw className="mr-2 h-4 w-4" /> 활성화
+                      </DropdownMenuItem>
+                      {onDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => { e.stopPropagation(); onDelete(project); }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> 영구 삭제
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
                   ) : (
                     <DropdownMenuItem
                       className="text-destructive"
