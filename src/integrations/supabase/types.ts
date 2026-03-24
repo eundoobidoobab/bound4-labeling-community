@@ -933,6 +933,10 @@ export type Database = {
         Args: { _profile_id: string; _reader_id: string }
         Returns: boolean
       }
+      delete_project_permanently: {
+        Args: { _project_id: string }
+        Returns: undefined
+      }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
