@@ -421,6 +421,42 @@ export default function ProjectsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Permanent delete confirmation */}
+      <AlertDialog open={!!permanentDeleteProject} onOpenChange={(v) => {
+        if (!v) { setPermanentDeleteProject(null); setDeleteProjectConfirmName(''); }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로젝트 영구 삭제</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                "{permanentDeleteProject?.name}" 프로젝트와 모든 관련 데이터(게시판, 게시글, 댓글, 가이드, 배분, DM 등)가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+              </span>
+              <span className="block text-sm font-medium text-foreground mt-3">
+                확인을 위해 프로젝트 이름을 입력해주세요
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={deleteProjectConfirmName}
+            onChange={(e) => setDeleteProjectConfirmName(e.target.value)}
+            placeholder={permanentDeleteProject?.name || '프로젝트 이름 입력'}
+            className="mt-2"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={permanentDeleting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePermanentDeleteProject}
+              disabled={permanentDeleting || deleteProjectConfirmName !== permanentDeleteProject?.name}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {permanentDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              영구 삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Admin join project dialog */}
       <Dialog open={!!joinDialogProject} onOpenChange={(v) => !v && setJoinDialogProject(null)}>
         <DialogContent className="max-w-sm">
