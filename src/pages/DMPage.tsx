@@ -235,54 +235,30 @@ export default function DMPage() {
     }
   }, [activeThreadId, fetchMessages]);
 
-  // Realtime: messages
-  useEffect(() => {
-    if (!activeThreadId) return;
-    const channel = supabase
-      .channel(`dm-${activeThreadId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'dm_messages',
-        filter: `thread_id=eq.${activeThreadId}`,
-      }, (payload) => {
-        const newMsg = payload.new as Message;
-        setMessages(prev => {
-          if (prev.some(m => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
-        });
-        fetchProfiles([newMsg.sender_id]);
-        fetchAttachmentsForMessages([newMsg.id]);
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        if (newMsg.sender_id !== user?.id) {
-          updateReadCursor(activeThreadId);
-        }
-      })
-      .subscribe();
+  // Realtime: messages & read cursors via custom hook
+  const handleRealtimeMessage = useCallback((newMsg: Message) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === newMsg.id)) return prev;
+      return [...prev, newMsg];
+    });
+    fetchProfiles([newMsg.sender_id]);
+    fetchAttachmentsForMessages([newMsg.id]);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    if (newMsg.sender_id !== user?.id && activeThreadId) {
+      updateReadCursor(activeThreadId);
+    }
+  }, [user?.id, activeThreadId, fetchProfiles, fetchAttachmentsForMessages, updateReadCursor]);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [activeThreadId, user?.id, fetchProfiles, fetchAttachmentsForMessages, updateReadCursor]);
+  const handleRealtimeCursor = useCallback((cursor: { user_id: string; last_read_at: string }) => {
+    setReadCursors(prev => ({ ...prev, [cursor.user_id]: cursor }));
+  }, []);
 
-  // Realtime: read cursors
-  useEffect(() => {
-    if (!activeThreadId) return;
-    const channel = supabase
-      .channel(`dm-read-${activeThreadId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'dm_read_cursors',
-        filter: `thread_id=eq.${activeThreadId}`,
-      }, (payload) => {
-        const cursor = payload.new as any;
-        if (cursor?.user_id) {
-          setReadCursors(prev => ({ ...prev, [cursor.user_id]: cursor }));
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [activeThreadId]);
+  useDMRealtime({
+    activeThreadId,
+    userId: user?.id,
+    onNewMessage: handleRealtimeMessage,
+    onReadCursorUpdate: handleRealtimeCursor,
+  });
 
   const handleSend = useCallback(async (msgBody: string, files: File[]) => {
     if (!activeThreadId || !user || !projectId) return;
