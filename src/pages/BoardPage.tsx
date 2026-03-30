@@ -193,6 +193,7 @@ export default function BoardPage() {
                 author={profiles[post.author_id]}
                 attachments={postAttachments[post.id] || []}
                 canManage={post.author_id === user?.id || role === 'admin'}
+                isBugBoard={isBug}
                 isEditing={editingId === post.id}
                 onEdit={() => setEditingId(post.id)}
                 onCancelEdit={() => setEditingId(null)}
