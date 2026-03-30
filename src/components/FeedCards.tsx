@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp, Database, User } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import EditableContent from '@/components/EditableContent';
 import FeedAttachments from '@/components/FeedAttachments';
 import FeedComments from '@/components/FeedComments';
+import { supabase } from '@/integrations/supabase/client';
 import type { Notice, Post, Attachment, Profile } from '@/types';
 
 const TITLE_MAX = 80;
