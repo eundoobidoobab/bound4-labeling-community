@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp, Database, User } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import EditableContent from '@/components/EditableContent';
 import FeedAttachments from '@/components/FeedAttachments';
 import FeedComments from '@/components/FeedComments';
+import { supabase } from '@/integrations/supabase/client';
 import type { Notice, Post, Attachment, Profile } from '@/types';
 
 const TITLE_MAX = 80;
@@ -147,6 +148,7 @@ interface PostCardProps {
   attachments: Attachment[];
   canManage: boolean;
   isEditing: boolean;
+  isBugBoard?: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: (title: string, body: string) => Promise<void>;
@@ -154,9 +156,19 @@ interface PostCardProps {
 }
 
 export function PostCard({
-  post, author, attachments, canManage,
+  post, author, attachments, canManage, isBugBoard,
   isEditing, onEdit, onCancelEdit, onSave, onDelete,
 }: PostCardProps) {
+  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!post.capture_image_path) return;
+    supabase.storage.from('board_attachments').createSignedUrl(post.capture_image_path, 3600)
+      .then(({ data }) => { if (data?.signedUrl) setCaptureUrl(data.signedUrl); });
+  }, [post.capture_image_path]);
+
+  const hasBugFields = isBugBoard && (post.data_no || post.worker_ref || post.capture_image_path);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -204,6 +216,29 @@ export function PostCard({
           />
         ) : (
           <>
+            {hasBugFields && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {post.data_no && (
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                    <Database className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">데이터No.</span>
+                    <span className="font-medium text-foreground">{post.data_no}</span>
+                  </span>
+                )}
+                {post.worker_ref && (
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">작업자ID</span>
+                    <span className="font-medium text-foreground">{post.worker_ref}</span>
+                  </span>
+                )}
+              </div>
+            )}
+            {captureUrl && (
+              <div className="mb-3">
+                <img src={captureUrl} alt="캡처 이미지" className="rounded-lg border border-border max-h-64 object-contain" />
+              </div>
+            )}
             <CollapsibleBody text={post.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="post" parentId={post.id} />
