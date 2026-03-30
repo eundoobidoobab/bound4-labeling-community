@@ -114,13 +114,21 @@ export default function BoardPage() {
 
       {canCreate && (
         <div className="mb-6">
-          <FeedComposer
-            userDisplayName={userDisplayName}
-            projectId={project.id}
-            placeholder={isNotice ? '공지사항을 작성하세요...' : '무엇이든 질문하거나 공유해보세요...'}
-            titlePlaceholder={isNotice ? '공지 제목' : '제목'}
-            onSubmit={isNotice ? handleCreateNotice : handleCreatePost}
-          />
+          {isBug ? (
+            <BugReportComposer
+              userDisplayName={userDisplayName}
+              projectId={project.id}
+              onSubmit={handleCreatePost}
+            />
+          ) : (
+            <FeedComposer
+              userDisplayName={userDisplayName}
+              projectId={project.id}
+              placeholder={isNotice ? '공지사항을 작성하세요...' : '무엇이든 질문하거나 공유해보세요...'}
+              titlePlaceholder={isNotice ? '공지 제목' : '제목'}
+              onSubmit={isNotice ? handleCreateNotice : handleCreatePost}
+            />
+          )}
         </div>
       )}
 
