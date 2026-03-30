@@ -131,6 +131,35 @@ export type Database = {
           },
         ]
       }
+      board_visits: {
+        Row: {
+          board_id: string
+          id: string
+          last_visited_at: string
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          id?: string
+          last_visited_at?: string
+          user_id: string
+        }
+        Update: {
+          board_id?: string
+          id?: string
+          last_visited_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_visits_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
           created_at: string
