@@ -51,7 +51,7 @@ export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarContent className="bg-card">
+      <SidebarContent className="bg-card flex flex-col">
         <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
             {project.name.charAt(0)}
@@ -108,26 +108,35 @@ export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {isAdmin && (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
-                      <NavLink to={`/projects/${id}/settings`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <Settings className="h-4 w-4" />
-                        {!collapsed && <span>설정</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onLeave} className="hover:bg-destructive/10 text-destructive hover:text-destructive cursor-pointer">
-                      <LogOut className="h-4 w-4" />
-                      {!collapsed && <span>프로젝트 나가기</span>}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/settings`}>
+                    <NavLink to={`/projects/${id}/settings`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
+                      <Settings className="h-4 w-4" />
+                      {!collapsed && <span>설정</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Spacer to push leave button to bottom */}
+        <div className="flex-1" />
+
+        {/* Leave project button - fixed at bottom */}
+        <div className="p-3 border-t border-border">
+          <button
+            onClick={onLeave}
+            className={`flex items-center gap-2 w-full rounded-lg border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-all ${
+              collapsed ? 'justify-center p-2' : 'px-3 py-2.5'
+            }`}
+            title="프로젝트 나가기"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">프로젝트 나가기</span>}
+          </button>
+        </div>
       </SidebarContent>
     </Sidebar>
   );
