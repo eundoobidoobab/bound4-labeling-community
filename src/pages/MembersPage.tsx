@@ -545,6 +545,30 @@ export default function MembersPage() {
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 )}
+                {/* Role change - admin only, not self */}
+                {role === 'admin' && m.userId !== user?.id && (
+                  m.isAdmin ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      title="작업자로 변경"
+                      onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'worker' })}
+                    >
+                      <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      title="관리자로 승격"
+                      onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'admin' })}
+                    >
+                      <ArrowUpCircle className="h-4 w-4 text-primary" />
+                    </Button>
+                  )
+                )}
                 {!m.isAdmin && isCurrentUserAdmin && (
                   <Button
                     variant="ghost"
