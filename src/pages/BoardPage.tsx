@@ -90,6 +90,7 @@ export default function BoardPage() {
   }
 
   const isNotice = board?.type === 'NOTICE';
+  const isBug = board?.type === 'BUG';
   const isForum = ['QNA', 'BUG', 'CUSTOM'].includes(board?.type || '');
   const isAllocation = board?.type === 'ALLOCATION';
   const isGuide = board?.type === 'GUIDE';
