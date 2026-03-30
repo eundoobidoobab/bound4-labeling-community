@@ -251,7 +251,24 @@ export default function MembersPage() {
     }
   };
 
-  const handleStartDm = async (targetUserId: string, targetIsAdmin: boolean) => {
+  const handleChangeRole = async () => {
+    if (!roleChangeTarget) return;
+    setChangingRole(true);
+    const { error } = await supabase.rpc('change_user_role', {
+      _target_user_id: roleChangeTarget.userId,
+      _new_role: roleChangeTarget.toRole,
+    });
+    setChangingRole(false);
+    setRoleChangeTarget(null);
+    if (error) {
+      toast({ title: '역할 변경 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '역할이 변경되었습니다', description: `${roleChangeTarget.name}님이 ${roleChangeTarget.toRole === 'admin' ? '관리자' : '작업자'}로 변경되었습니다.` });
+      invalidate();
+    }
+  };
+
+
     if (!projectId || !user) return;
 
     // Determine admin_id and worker_id based on who is initiating
