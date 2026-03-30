@@ -695,6 +695,32 @@ export default function MembersPage() {
           </div>
         </div>
       )}
+
+      {/* Role change confirmation dialog */}
+      <AlertDialog open={!!roleChangeTarget} onOpenChange={(open) => !open && setRoleChangeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>역할 변경 확인</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">{roleChangeTarget?.name}</span>님을{' '}
+              <span className="font-medium text-foreground">
+                {roleChangeTarget?.toRole === 'admin' ? '관리자' : '작업자'}
+              </span>
+              (으)로 변경하시겠습니까?
+              {roleChangeTarget?.toRole === 'admin' && (
+                <span className="block mt-2 text-destructive">관리자는 시스템 내 모든 프로젝트와 데이터에 접근할 수 있습니다.</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={changingRole}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChangeRole} disabled={changingRole}>
+              {changingRole && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
