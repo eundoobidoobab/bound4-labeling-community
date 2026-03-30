@@ -1,13 +1,55 @@
+import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Pin, MoreHorizontal, Trash2, Pencil, Eye } from 'lucide-react';
+import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import EditableContent from '@/components/EditableContent';
 import FeedAttachments from '@/components/FeedAttachments';
 import FeedComments from '@/components/FeedComments';
 import type { Notice, Post, Attachment, Profile } from '@/types';
+
+const TITLE_MAX = 80;
+const BODY_MAX_LINES = 8;
+
+function CollapsibleBody({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = text.split('\n');
+  const needsTruncate = lines.length > BODY_MAX_LINES || text.length > 500;
+
+  if (!needsTruncate) {
+    return <p className="text-sm text-foreground whitespace-pre-wrap break-words">{text}</p>;
+  }
+
+  const preview = expanded ? text : lines.slice(0, BODY_MAX_LINES).join('\n').slice(0, 500);
+
+  return (
+    <div>
+      <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+        {preview}{!expanded && '...'}
+      </p>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1 transition-colors"
+      >
+        {expanded ? <><ChevronUp className="h-3.5 w-3.5" /> 접기</> : <><ChevronDown className="h-3.5 w-3.5" /> 더보기</>}
+      </button>
+    </div>
+  );
+}
+
+function TruncatedTitle({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (text.length <= TITLE_MAX) {
+    return <CardTitle className="text-base mt-1 break-words">{text}</CardTitle>;
+  }
+  return (
+    <CardTitle className="text-base mt-1 break-words cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      {expanded ? text : text.slice(0, TITLE_MAX) + '...'}
+    </CardTitle>
+  );
+}
 
 interface NoticeCardProps {
   notice: Notice;
