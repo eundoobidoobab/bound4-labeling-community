@@ -1017,6 +1017,17 @@ export type Database = {
           id: string
         }[]
       }
+      send_project_notifications: {
+        Args: {
+          _body?: string
+          _deep_link?: string
+          _project_id?: string
+          _title: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_ids: string[]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "worker"
