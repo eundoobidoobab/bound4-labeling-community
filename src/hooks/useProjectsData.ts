@@ -63,7 +63,7 @@ export function useProjectsData(userId: string | undefined, role: string | null)
 
         if (invData && invData.length > 0) {
           const projectIds = [...new Set(invData.map((inv: any) => inv.project_id))];
-          const { data: projData } = await supabase.from('projects').select('id, name').in('id', projectIds);
+          const { data: projData } = await supabase.rpc('get_invitation_project_names', { _project_ids: projectIds });
           const projMap: Record<string, string> = {};
           (projData || []).forEach((p: any) => { projMap[p.id] = p.name; });
 

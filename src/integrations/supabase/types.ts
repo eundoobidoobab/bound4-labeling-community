@@ -944,6 +944,13 @@ export type Database = {
         Args: { _project_id: string }
         Returns: undefined
       }
+      get_invitation_project_names: {
+        Args: { _project_ids: string[] }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
