@@ -40,6 +40,13 @@ export default function BoardPage() {
     if (user) fetchProfiles([user.id]);
   }, [data?.authorIds, user]);
 
+  // Mark board as visited
+  useEffect(() => {
+    if (user && boardId) {
+      markBoardVisited(user.id, boardId).then(() => recheckUnread?.());
+    }
+  }, [user, boardId]);
+
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
   const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: ['board', boardId] });
