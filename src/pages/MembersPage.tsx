@@ -268,7 +268,7 @@ export default function MembersPage() {
     }
   };
 
-
+  const handleStartDm = async (targetUserId: string, targetIsAdmin: boolean) => {
     if (!projectId || !user) return;
 
     // Determine admin_id and worker_id based on who is initiating
