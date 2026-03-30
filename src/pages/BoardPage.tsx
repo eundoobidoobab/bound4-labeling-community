@@ -66,9 +66,13 @@ export default function BoardPage() {
     invalidateBoard();
   };
 
-  const handleCreatePost = async ({ title, body, attachmentPaths }: { title: string; body: string; attachmentPaths: any[] }) => {
+  const handleCreatePost = async ({ title, body, attachmentPaths, data_no, worker_ref, capture_image_path }: { title: string; body: string; attachmentPaths: any[]; data_no?: string; worker_ref?: string; capture_image_path?: string }) => {
     if (!user || !boardId) return;
-    const { data: inserted, error } = await supabase.from('posts').insert({ board_id: boardId, title, body, author_id: user.id }).select().single();
+    const insertData: any = { board_id: boardId, title, body, author_id: user.id };
+    if (data_no) insertData.data_no = data_no;
+    if (worker_ref) insertData.worker_ref = worker_ref;
+    if (capture_image_path) insertData.capture_image_path = capture_image_path;
+    const { data: inserted, error } = await supabase.from('posts').insert(insertData).select().single();
     if (error) { toast({ title: '생성 실패', description: error.message, variant: 'destructive' }); return; }
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('post_attachments').insert(attachmentPaths.map(a => ({ ...a, post_id: inserted.id })));
