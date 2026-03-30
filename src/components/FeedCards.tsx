@@ -130,7 +130,7 @@ export function PostCard({
                 <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
                 <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
               </div>
-              <CardTitle className="text-base mt-1">{post.title}</CardTitle>
+              <CardTitle className="text-base mt-1 break-words">{post.title}</CardTitle>
             </div>
           </div>
           {canManage && (
