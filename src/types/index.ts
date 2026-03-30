@@ -51,6 +51,9 @@ export interface Post {
   created_at: string;
   status: PostStatus;
   board_id: string;
+  data_no?: string | null;
+  capture_image_path?: string | null;
+  worker_ref?: string | null;
 }
 
 export interface Attachment {
