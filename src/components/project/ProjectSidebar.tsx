@@ -38,6 +38,7 @@ interface ProjectSidebarProps {
   project: Project;
   boards: Board[];
   onLeave: () => void;
+  unreadBoardIds?: Set<string>;
 }
 
 export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps) {
