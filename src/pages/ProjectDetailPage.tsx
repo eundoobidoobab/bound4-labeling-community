@@ -44,6 +44,13 @@ export default function ProjectDetailPage() {
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
 
+  // Mark NOTICE board as visited
+  useEffect(() => {
+    if (user && noticeBoard) {
+      markBoardVisited(user.id, noticeBoard.id).then(() => recheckUnread?.());
+    }
+  }, [user, noticeBoard?.id]);
+
   // Fetch notices with react-query
   const { data: queryData, isLoading } = useQuery({
     queryKey: ['projectDetail', noticeBoard?.id],
