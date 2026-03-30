@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Loader2, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FeedComposer from '@/components/FeedComposer';
+import BugReportComposer from '@/components/BugReportComposer';
 import { NoticeCard, PostCard } from '@/components/FeedCards';
 import GuideBoard from '@/components/GuideBoard';
 import AllocationBoard from '@/components/AllocationBoard';
