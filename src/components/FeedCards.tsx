@@ -48,7 +48,7 @@ export function NoticeCard({
                   </span>
                 )}
               </div>
-              <CardTitle className="text-base mt-1">{notice.title}</CardTitle>
+              <CardTitle className="text-base mt-1 break-words">{notice.title}</CardTitle>
             </div>
           </div>
           {isAdmin && (
