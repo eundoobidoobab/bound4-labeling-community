@@ -156,9 +156,19 @@ interface PostCardProps {
 }
 
 export function PostCard({
-  post, author, attachments, canManage,
+  post, author, attachments, canManage, isBugBoard,
   isEditing, onEdit, onCancelEdit, onSave, onDelete,
 }: PostCardProps) {
+  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!post.capture_image_path) return;
+    supabase.storage.from('board_attachments').createSignedUrl(post.capture_image_path, 3600)
+      .then(({ data }) => { if (data?.signedUrl) setCaptureUrl(data.signedUrl); });
+  }, [post.capture_image_path]);
+
+  const hasBugFields = isBugBoard && (post.data_no || post.worker_ref || post.capture_image_path);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -206,6 +216,29 @@ export function PostCard({
           />
         ) : (
           <>
+            {hasBugFields && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {post.data_no && (
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                    <Database className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">데이터No.</span>
+                    <span className="font-medium text-foreground">{post.data_no}</span>
+                  </span>
+                )}
+                {post.worker_ref && (
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">작업자ID</span>
+                    <span className="font-medium text-foreground">{post.worker_ref}</span>
+                  </span>
+                )}
+              </div>
+            )}
+            {captureUrl && (
+              <div className="mb-3">
+                <img src={captureUrl} alt="캡처 이미지" className="rounded-lg border border-border max-h-64 object-contain" />
+              </div>
+            )}
             <CollapsibleBody text={post.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="post" parentId={post.id} />
