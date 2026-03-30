@@ -442,7 +442,7 @@ export default function MembersPage() {
 
       {/* Members table - desktop */}
       <div className="hidden md:block border border-border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_120px_100px_160px_40px] items-center gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
+        <div className="grid grid-cols-[1fr_120px_100px_160px_100px] items-center gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
           <span>이름</span>
           <span>역할</span>
           <span>권한</span>
