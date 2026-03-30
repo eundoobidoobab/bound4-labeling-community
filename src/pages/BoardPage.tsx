@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
+import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import type { Board, Project } from '@/types';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
-  const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
+  const { project, recheckUnread } = useOutletContext<{ project: Project; boards: Board[]; recheckUnread?: () => void }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
@@ -38,6 +39,13 @@ export default function BoardPage() {
     if (data?.authorIds && data.authorIds.length > 0) fetchProfiles(data.authorIds);
     if (user) fetchProfiles([user.id]);
   }, [data?.authorIds, user]);
+
+  // Mark board as visited
+  useEffect(() => {
+    if (user && boardId) {
+      markBoardVisited(user.id, boardId).then(() => recheckUnread?.());
+    }
+  }, [user, boardId]);
 
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';

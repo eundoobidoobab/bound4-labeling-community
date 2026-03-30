@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
+import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,7 +25,7 @@ interface ReadInfo {
 }
 
 export default function ProjectDetailPage() {
-  const { project, boards } = useOutletContext<{ project: Project; boards: Board[] }>();
+  const { project, boards, recheckUnread } = useOutletContext<{ project: Project; boards: Board[]; recheckUnread?: () => void }>();
   const { id: projectId } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
@@ -42,6 +43,13 @@ export default function ProjectDetailPage() {
   const noticeBoard = boards.find((b) => b.type === 'NOTICE');
   const userProfile = user ? profiles[user.id] : null;
   const userDisplayName = userProfile?.display_name || userProfile?.email || user?.email || 'User';
+
+  // Mark NOTICE board as visited
+  useEffect(() => {
+    if (user && noticeBoard) {
+      markBoardVisited(user.id, noticeBoard.id).then(() => recheckUnread?.());
+    }
+  }, [user, noticeBoard?.id]);
 
   // Fetch notices with react-query
   const { data: queryData, isLoading } = useQuery({

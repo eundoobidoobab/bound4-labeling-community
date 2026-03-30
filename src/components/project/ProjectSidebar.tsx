@@ -38,9 +38,10 @@ interface ProjectSidebarProps {
   project: Project;
   boards: Board[];
   onLeave: () => void;
+  unreadBoardIds?: Set<string>;
 }
 
-export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps) {
+export function ProjectSidebar({ project, boards, onLeave, unreadBoardIds = new Set() }: ProjectSidebarProps) {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const { state } = useSidebar();
@@ -76,8 +77,16 @@ export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <NavLink to={boardPath} end={board.type === 'NOTICE'} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <Icon className="h-4 w-4" />
+                        <div className="relative">
+                          <Icon className="h-4 w-4" />
+                          {unreadBoardIds.has(board.id) && !isActive && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
+                          )}
+                        </div>
                         {!collapsed && <span>{board.name}</span>}
+                        {!collapsed && unreadBoardIds.has(board.id) && !isActive && (
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive shrink-0" />
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
