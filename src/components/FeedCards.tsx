@@ -148,6 +148,7 @@ interface PostCardProps {
   attachments: Attachment[];
   canManage: boolean;
   isEditing: boolean;
+  isBugBoard?: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: (title: string, body: string) => Promise<void>;
