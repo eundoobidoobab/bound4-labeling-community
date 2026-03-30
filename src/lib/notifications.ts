@@ -30,14 +30,12 @@ export async function sendNotifications(params: {
 }) {
   if (params.userIds.length === 0) return;
 
-  const notifs = params.userIds.map(userId => ({
-    user_id: userId,
-    type: params.type,
-    title: params.title,
-    body: params.body || null,
-    project_id: params.projectId,
-    deep_link: params.deepLink || null,
-  }));
-
-  await supabase.from('notifications').insert(notifs);
+  await supabase.rpc('send_project_notifications', {
+    _user_ids: params.userIds,
+    _type: params.type,
+    _title: params.title,
+    _body: params.body || null,
+    _project_id: params.projectId,
+    _deep_link: params.deepLink || null,
+  });
 }

@@ -284,17 +284,16 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         if (error) throw error;
       }
 
-      // Create notifications for all checked workers
-      const notifs = checkedApps.map(a => ({
-        user_id: a.worker_id,
-        type: 'ALLOCATION_DISTRIBUTED' as const,
-        title: '배분 할당 완료',
-        body: `"${selectedCall.title}" 작업이 배분되었습니다.`,
-        project_id: projectId,
-        deep_link: `/projects/${projectId}/boards/${boardId}`,
-      }));
-
-      await supabase.from('notifications').insert(notifs);
+      // Send notifications via secure RPC
+      const workerIds = checkedApps.map(a => a.worker_id);
+      await supabase.rpc('send_project_notifications', {
+        _user_ids: workerIds,
+        _type: 'ALLOCATION_DISTRIBUTED',
+        _title: '배분 할당 완료',
+        _body: `"${selectedCall.title}" 작업이 배분되었습니다.`,
+        _project_id: projectId,
+        _deep_link: `/projects/${projectId}/boards/${boardId}`,
+      });
 
       toast({ title: `${checkedIds.size}명에게 할당 완료` });
       fetchCallDetail(selectedCall);
