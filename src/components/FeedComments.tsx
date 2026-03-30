@@ -4,9 +4,37 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ChevronUp, Trash2 } from 'lucide-react';
+import { Loader2, Send, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { formatDateTime } from '@/lib/formatDate';
+
+const COMMENT_BODY_MAX = 200;
+
+function CollapsibleComment({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = text.split('\n');
+  const needsTruncate = lines.length > 4 || text.length > COMMENT_BODY_MAX;
+
+  if (!needsTruncate) {
+    return <p className="text-sm text-foreground whitespace-pre-wrap break-words overflow-hidden">{text}</p>;
+  }
+
+  const preview = expanded ? text : lines.slice(0, 4).join('\n').slice(0, COMMENT_BODY_MAX);
+
+  return (
+    <div>
+      <p className="text-sm text-foreground whitespace-pre-wrap break-words overflow-hidden">
+        {preview}{!expanded && '...'}
+      </p>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-0.5 transition-colors"
+      >
+        {expanded ? <><ChevronUp className="h-3 w-3" /> 접기</> : <><ChevronDown className="h-3 w-3" /> 더보기</>}
+      </button>
+    </div>
+  );
+}
 
 const PREVIEW_COUNT = 3;
 
