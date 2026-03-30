@@ -73,19 +73,15 @@ export function ProjectSidebar({ project, boards, onLeave, unreadBoardIds = new 
                 const Icon = boardIcons[board.type] || MessageSquare;
                 const boardPath = board.type === 'NOTICE' ? `/projects/${id}` : `/projects/${id}/boards/${board.id}`;
                 const isActive = board.type === 'NOTICE' ? isProjectHome : location.pathname === boardPath;
+                const hasUnread = unreadBoardIds.has(board.id) && !isActive;
                 return (
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <NavLink to={boardPath} end={board.type === 'NOTICE'} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
-                        <div className="relative">
-                          <Icon className="h-4 w-4" />
-                          {unreadBoardIds.has(board.id) && !isActive && (
-                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
-                          )}
-                        </div>
-                        {!collapsed && <span>{board.name}</span>}
-                        {!collapsed && unreadBoardIds.has(board.id) && !isActive && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive shrink-0" />
+                        <Icon className="h-4 w-4" />
+                        {!collapsed && <span className="flex-1 truncate">{board.name}</span>}
+                        {hasUnread && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
                         )}
                       </NavLink>
                     </SidebarMenuButton>
