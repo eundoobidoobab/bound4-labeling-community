@@ -257,6 +257,7 @@ export default function MembersPage() {
     const { error } = await supabase.rpc('change_user_role', {
       _target_user_id: roleChangeTarget.userId,
       _new_role: roleChangeTarget.toRole,
+      _project_id: projectId!,
     });
     setChangingRole(false);
     setRoleChangeTarget(null);
