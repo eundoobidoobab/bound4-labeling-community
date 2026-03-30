@@ -162,7 +162,7 @@ export function PostCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{post.body}</p>
             <FeedAttachments attachments={attachments} />
             <FeedComments type="post" parentId={post.id} />
           </>
