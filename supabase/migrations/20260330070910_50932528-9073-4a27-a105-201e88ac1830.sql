@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.change_user_role(uuid, app_role);
