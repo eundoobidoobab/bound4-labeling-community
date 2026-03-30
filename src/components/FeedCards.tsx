@@ -89,7 +89,7 @@ export function NoticeCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{notice.body}</p>
             <FeedAttachments attachments={attachments} />
             <FeedComments type="notice" parentId={notice.id} />
           </>
