@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X, MessageSquare } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Clock, Users, Shield, Search, Pencil, Check, X, MessageSquare, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/formatDate';
 import { motion } from 'framer-motion';
@@ -54,6 +55,8 @@ export default function MembersPage() {
   const [editingAdminId, setEditingAdminId] = useState<string | null>(null);
   const [editRoleValue, setEditRoleValue] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; name: string; toRole: 'admin' | 'worker' } | null>(null);
+  const [changingRole, setChangingRole] = useState(false);
 
   const handleSearchUsers = useCallback(async (query: string) => {
     setSearchQuery(query);
@@ -248,7 +251,24 @@ export default function MembersPage() {
     }
   };
 
-  const handleStartDm = async (targetUserId: string, targetIsAdmin: boolean) => {
+  const handleChangeRole = async () => {
+    if (!roleChangeTarget) return;
+    setChangingRole(true);
+    const { error } = await supabase.rpc('change_user_role', {
+      _target_user_id: roleChangeTarget.userId,
+      _new_role: roleChangeTarget.toRole,
+    });
+    setChangingRole(false);
+    setRoleChangeTarget(null);
+    if (error) {
+      toast({ title: '역할 변경 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '역할이 변경되었습니다', description: `${roleChangeTarget.name}님이 ${roleChangeTarget.toRole === 'admin' ? '관리자' : '작업자'}로 변경되었습니다.` });
+      invalidate();
+    }
+  };
+
+
     if (!projectId || !user) return;
 
     // Determine admin_id and worker_id based on who is initiating
@@ -525,6 +545,30 @@ export default function MembersPage() {
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 )}
+                {/* Role change - admin only, not self */}
+                {role === 'admin' && m.userId !== user?.id && (
+                  m.isAdmin ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      title="작업자로 변경"
+                      onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'worker' })}
+                    >
+                      <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                      title="관리자로 승격"
+                      onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'admin' })}
+                    >
+                      <ArrowUpCircle className="h-4 w-4 text-primary" />
+                    </Button>
+                  )
+                )}
                 {!m.isAdmin && isCurrentUserAdmin && (
                   <Button
                     variant="ghost"
@@ -591,6 +635,17 @@ export default function MembersPage() {
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   )}
+                  {role === 'admin' && m.userId !== user?.id && (
+                    m.isAdmin ? (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="작업자로 변경" onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'worker' })}>
+                        <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="관리자로 승격" onClick={() => setRoleChangeTarget({ userId: m.userId, name: m.display_name || m.email, toRole: 'admin' })}>
+                        <ArrowUpCircle className="h-4 w-4 text-primary" />
+                      </Button>
+                    )
+                  )}
                   {!m.isAdmin && isCurrentUserAdmin && (
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeMember(m.membershipId!)}>
                       <X className="h-4 w-4" />
@@ -640,6 +695,32 @@ export default function MembersPage() {
           </div>
         </div>
       )}
+
+      {/* Role change confirmation dialog */}
+      <AlertDialog open={!!roleChangeTarget} onOpenChange={(open) => !open && setRoleChangeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>역할 변경 확인</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">{roleChangeTarget?.name}</span>님을{' '}
+              <span className="font-medium text-foreground">
+                {roleChangeTarget?.toRole === 'admin' ? '관리자' : '작업자'}
+              </span>
+              (으)로 변경하시겠습니까?
+              {roleChangeTarget?.toRole === 'admin' && (
+                <span className="block mt-2 text-destructive">관리자는 시스템 내 모든 프로젝트와 데이터에 접근할 수 있습니다.</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={changingRole}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChangeRole} disabled={changingRole}>
+              {changingRole && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
