@@ -189,6 +189,12 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   const handleApply = async () => {
     if (!user || !applyCallId) return;
+    // Frontend deadline check
+    const call = calls.find(c => c.id === applyCallId);
+    if (call && new Date() > new Date(call.apply_deadline)) {
+      toast({ title: '신청 마감', description: '신청 마감일이 지났습니다.', variant: 'destructive' });
+      return;
+    }
     const qty = applyQuantity.trim() ? parseInt(applyQuantity) : null;
     const { error } = await supabase.from('allocation_applications').insert({
       call_id: applyCallId,
