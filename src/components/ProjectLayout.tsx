@@ -73,7 +73,7 @@ export default function ProjectLayout() {
             </Button>
           </header>
           <main className="flex-1 overflow-auto">
-            <Outlet context={{ project, boards }} />
+            <Outlet context={{ project, boards, recheckUnread }} />
           </main>
         </div>
       </div>
