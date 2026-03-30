@@ -933,13 +933,22 @@ export type Database = {
         Args: { _profile_id: string; _reader_id: string }
         Returns: boolean
       }
-      change_user_role: {
-        Args: {
-          _new_role: Database["public"]["Enums"]["app_role"]
-          _target_user_id: string
-        }
-        Returns: undefined
-      }
+      change_user_role:
+        | {
+            Args: {
+              _new_role: Database["public"]["Enums"]["app_role"]
+              _target_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _new_role: Database["public"]["Enums"]["app_role"]
+              _project_id?: string
+              _target_user_id: string
+            }
+            Returns: undefined
+          }
       delete_project_permanently: {
         Args: { _project_id: string }
         Returns: undefined
