@@ -131,7 +131,7 @@ export function NoticeCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{notice.body}</p>
+            <CollapsibleBody text={notice.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="notice" parentId={notice.id} />
           </>
