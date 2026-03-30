@@ -204,7 +204,7 @@ export function PostCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{post.body}</p>
+            <CollapsibleBody text={post.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="post" parentId={post.id} />
           </>
