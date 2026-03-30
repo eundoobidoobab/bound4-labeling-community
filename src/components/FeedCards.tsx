@@ -48,7 +48,7 @@ export function NoticeCard({
                   </span>
                 )}
               </div>
-              <CardTitle className="text-base mt-1">{notice.title}</CardTitle>
+              <CardTitle className="text-base mt-1 break-words">{notice.title}</CardTitle>
             </div>
           </div>
           {isAdmin && (
@@ -89,7 +89,7 @@ export function NoticeCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{notice.body}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{notice.body}</p>
             <FeedAttachments attachments={attachments} />
             <FeedComments type="notice" parentId={notice.id} />
           </>
@@ -130,7 +130,7 @@ export function PostCard({
                 <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
                 <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
               </div>
-              <CardTitle className="text-base mt-1">{post.title}</CardTitle>
+              <CardTitle className="text-base mt-1 break-words">{post.title}</CardTitle>
             </div>
           </div>
           {canManage && (
@@ -162,7 +162,7 @@ export function PostCard({
           />
         ) : (
           <>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{post.body}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{post.body}</p>
             <FeedAttachments attachments={attachments} />
             <FeedComments type="post" parentId={post.id} />
           </>
