@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
+import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
