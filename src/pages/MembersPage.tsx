@@ -461,7 +461,7 @@ export default function MembersPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.02 }}
-              className="grid grid-cols-[1fr_120px_100px_160px_40px] items-center gap-2 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group"
+              className="grid grid-cols-[1fr_120px_100px_160px_100px] items-center gap-2 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group"
             >
               {/* Name */}
               <div className="flex items-center gap-3 min-w-0">
