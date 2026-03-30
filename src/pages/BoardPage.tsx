@@ -20,7 +20,7 @@ import type { Board, Project } from '@/types';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
-  const { project } = useOutletContext<{ project: Project; boards: Board[] }>();
+  const { project, recheckUnread } = useOutletContext<{ project: Project; boards: Board[]; recheckUnread?: () => void }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { profiles, fetchProfiles } = useProfiles();
