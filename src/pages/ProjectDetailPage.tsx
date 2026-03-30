@@ -25,7 +25,7 @@ interface ReadInfo {
 }
 
 export default function ProjectDetailPage() {
-  const { project, boards } = useOutletContext<{ project: Project; boards: Board[] }>();
+  const { project, boards, recheckUnread } = useOutletContext<{ project: Project; boards: Board[]; recheckUnread?: () => void }>();
   const { id: projectId } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const { toast } = useToast();
