@@ -90,7 +90,7 @@ export function NoticeCard({
                   </span>
                 )}
               </div>
-              <CardTitle className="text-base mt-1 break-words">{notice.title}</CardTitle>
+              <TruncatedTitle text={notice.title} />
             </div>
           </div>
           {isAdmin && (
