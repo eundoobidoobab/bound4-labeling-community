@@ -158,7 +158,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
                 </button>
               )}
             </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap break-words overflow-hidden">{comment.body}</p>
+            <CollapsibleComment text={comment.body} />
           </div>
         </div>
       </div>
