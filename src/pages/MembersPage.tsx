@@ -442,7 +442,7 @@ export default function MembersPage() {
 
       {/* Members table - desktop */}
       <div className="hidden md:block border border-border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_120px_100px_160px_40px] items-center gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
+        <div className="grid grid-cols-[1fr_120px_100px_160px_100px] items-center gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
           <span>이름</span>
           <span>역할</span>
           <span>권한</span>
@@ -461,7 +461,7 @@ export default function MembersPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.02 }}
-              className="grid grid-cols-[1fr_120px_100px_160px_40px] items-center gap-2 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group"
+              className="grid grid-cols-[1fr_120px_100px_160px_100px] items-center gap-2 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors group"
             >
               {/* Name */}
               <div className="flex items-center gap-3 min-w-0">
@@ -533,7 +533,7 @@ export default function MembersPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-1">
+              <div className="flex justify-end gap-2">
                 {/* Worker → Admin DM */}
                 {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
                   <Button variant="ghost" size="icon" className="h-7 w-7" title="메시지 보내기" onClick={() => handleStartDm(m.userId, true)}>
@@ -625,7 +625,7 @@ export default function MembersPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-2 shrink-0">
                   {!isCurrentUserAdmin && m.isAdmin && m.userId !== user?.id && (
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartDm(m.userId, true)}>
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
