@@ -57,7 +57,6 @@ export default function MembersPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; name: string; toRole: 'admin' | 'worker' } | null>(null);
   const [changingRole, setChangingRole] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
   const handleSearchUsers = useCallback(async (query: string) => {
     setSearchQuery(query);
