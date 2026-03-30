@@ -41,7 +41,7 @@ interface ProjectSidebarProps {
   unreadBoardIds?: Set<string>;
 }
 
-export function ProjectSidebar({ project, boards, onLeave }: ProjectSidebarProps) {
+export function ProjectSidebar({ project, boards, onLeave, unreadBoardIds = new Set() }: ProjectSidebarProps) {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const { state } = useSidebar();
