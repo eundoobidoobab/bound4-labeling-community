@@ -689,28 +689,37 @@ export type Database = {
           author_id: string
           board_id: string
           body: string
+          capture_image_path: string | null
           created_at: string
+          data_no: string | null
           id: string
           status: Database["public"]["Enums"]["post_status"]
           title: string
+          worker_ref: string | null
         }
         Insert: {
           author_id: string
           board_id: string
           body: string
+          capture_image_path?: string | null
           created_at?: string
+          data_no?: string | null
           id?: string
           status?: Database["public"]["Enums"]["post_status"]
           title: string
+          worker_ref?: string | null
         }
         Update: {
           author_id?: string
           board_id?: string
           body?: string
+          capture_image_path?: string | null
           created_at?: string
+          data_no?: string | null
           id?: string
           status?: Database["public"]["Enums"]["post_status"]
           title?: string
+          worker_ref?: string | null
         }
         Relationships: [
           {
