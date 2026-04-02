@@ -55,17 +55,19 @@ export default function NewConversationDialog({ projectId, existingThreads, onTh
       } else {
         const { data: adminRows } = await supabase
           .from('project_admins')
-          .select('admin_id')
+          .select('admin_id, custom_role')
           .eq('project_id', projectId);
 
         const adminIds = (adminRows || []).map(a => a.admin_id).filter(id => id !== user.id);
+        const roleMap: Record<string, string | null> = {};
+        (adminRows || []).forEach(a => { roleMap[a.admin_id] = a.custom_role; });
 
         if (adminIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, display_name, email')
             .in('id', adminIds);
-          eligible = (profiles || []) as EligibleUser[];
+          eligible = (profiles || []).map(p => ({ ...p, custom_role: roleMap[p.id] || null })) as EligibleUser[];
         }
       }
     } catch (e) {
