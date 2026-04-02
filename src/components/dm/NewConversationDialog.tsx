@@ -12,6 +12,7 @@ interface EligibleUser {
   id: string;
   display_name: string | null;
   email: string;
+  custom_role?: string | null;
 }
 
 interface NewConversationDialogProps {
