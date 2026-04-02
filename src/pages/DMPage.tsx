@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
 import DMMessageInput from '@/components/dm/DMMessageInput';
 import DMMessageBubble from '@/components/dm/DMMessageBubble';
+import NewConversationDialog from '@/components/dm/NewConversationDialog';
 
 interface Thread {
   id: string;
