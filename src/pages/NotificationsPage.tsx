@@ -16,6 +16,7 @@ interface Notification {
   deep_link: string | null;
   is_read: boolean;
   created_at: string;
+  project_id: string | null;
 }
 
 const typeLabels: Record<string, string> = {
