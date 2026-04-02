@@ -41,7 +41,22 @@ export default function NotificationsPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
-    if (data) setNotifications(data as Notification[]);
+    if (data) {
+      setNotifications(data as Notification[]);
+      // Fetch project names for all unique project_ids
+      const projectIds = [...new Set(data.map((n: any) => n.project_id).filter(Boolean))] as string[];
+      if (projectIds.length > 0) {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name')
+          .in('id', projectIds);
+        if (projects) {
+          const map: Record<string, string> = {};
+          projects.forEach((p: any) => { map[p.id] = p.name; });
+          setProjectNames(map);
+        }
+      }
+    }
     setLoading(false);
   };
 
