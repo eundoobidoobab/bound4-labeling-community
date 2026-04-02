@@ -361,11 +361,18 @@ export default function DMPage() {
     <div className="flex h-[calc(100vh-48px)] overflow-hidden">
       {/* Thread list */}
       <div className={`w-80 border-r border-border flex flex-col bg-card shrink-0 ${mobileShowChat && activeThreadId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             메시지
           </h2>
+          {projectId && (
+            <NewConversationDialog
+              projectId={projectId}
+              existingThreads={threads}
+              onThreadCreated={handleThreadCreated}
+            />
+          )}
         </div>
         <ScrollArea className="flex-1">
           {threads.length === 0 ? (
