@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
 import DMMessageInput from '@/components/dm/DMMessageInput';
 import DMMessageBubble from '@/components/dm/DMMessageBubble';
+import NewConversationDialog from '@/components/dm/NewConversationDialog';
 
 interface Thread {
   id: string;
@@ -324,6 +325,11 @@ export default function DMPage() {
     setSearchParams({ thread: threadId });
   }, [setSearchParams]);
 
+  const handleThreadCreated = useCallback((threadId: string) => {
+    setSearchParams({ thread: threadId });
+    fetchThreads();
+  }, [setSearchParams, fetchThreads]);
+
   const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
     const isCurrentUserAdmin = user?.id === thread.admin_id;
     const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
@@ -355,11 +361,18 @@ export default function DMPage() {
     <div className="flex h-[calc(100vh-48px)] overflow-hidden">
       {/* Thread list */}
       <div className={`w-80 border-r border-border flex flex-col bg-card shrink-0 ${mobileShowChat && activeThreadId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             메시지
           </h2>
+          {projectId && (
+            <NewConversationDialog
+              projectId={projectId}
+              existingThreads={threads}
+              onThreadCreated={handleThreadCreated}
+            />
+          )}
         </div>
         <ScrollArea className="flex-1">
           {threads.length === 0 ? (
