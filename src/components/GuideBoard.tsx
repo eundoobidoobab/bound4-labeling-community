@@ -183,8 +183,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       await sendNotifications({
         userIds: memberIds,
         type: 'GUIDE_UPDATED',
-        title: '새 가이드 문서',
-        body: newTitle.trim(),
+        title: `📄 새 가이드: ${newTitle.trim()}`,
+        body: newSummary.trim() || null,
         projectId,
         deepLink: `/projects/${projectId}/boards/${boardId}`,
       });
