@@ -129,19 +129,21 @@ export function ProjectSidebar({ project, boards, onLeave, unreadBoardIds = new 
         {/* Spacer to push leave button to bottom */}
         <div className="flex-1" />
 
-        {/* Leave project button - fixed at bottom */}
-        <div className="p-3 border-t border-border">
-          <button
-            onClick={onLeave}
-            className={`flex items-center gap-2 w-full rounded-lg border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-all ${
-              collapsed ? 'justify-center p-2' : 'px-3 py-2.5'
-            }`}
-            title="프로젝트 나가기"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">프로젝트 나가기</span>}
-          </button>
-        </div>
+        {/* Leave project button - admin only */}
+        {isAdmin && (
+          <div className="p-3 border-t border-border">
+            <button
+              onClick={onLeave}
+              className={`flex items-center gap-2 w-full rounded-lg border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-all ${
+                collapsed ? 'justify-center p-2' : 'px-3 py-2.5'
+              }`}
+              title="프로젝트 나가기"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="text-sm font-medium">프로젝트 나가기</span>}
+            </button>
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );
