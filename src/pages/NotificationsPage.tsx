@@ -144,11 +144,19 @@ export default function NotificationsPage() {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-medium text-primary">
                           {typeLabels[n.type] || n.type}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        {n.project_id && projectNames[n.project_id] && (
+                          <>
+                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-xs text-muted-foreground font-medium truncate max-w-[120px]">
+                              {projectNames[n.project_id]}
+                            </span>
+                          </>
+                        )}
+                        <span className="text-xs text-muted-foreground ml-auto shrink-0">
                           {new Date(n.created_at).toLocaleString('ko-KR')}
                         </span>
                       </div>
