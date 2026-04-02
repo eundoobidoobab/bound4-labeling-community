@@ -168,7 +168,9 @@ export default function NewConversationDialog({ projectId, existingThreads, onTh
                       <p className="text-sm font-medium text-foreground truncate">
                         {u.display_name || u.email.split('@')[0]}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {role === 'admin' ? '작업자' : '관리자'}
+                      </p>
                     </div>
                     {isCreating ? (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
