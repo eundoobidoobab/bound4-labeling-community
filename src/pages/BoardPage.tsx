@@ -69,7 +69,7 @@ export default function BoardPage() {
       await supabase.from('notice_attachments').insert(attachmentPaths.map(a => ({ ...a, notice_id: inserted.id })));
     }
     const memberIds = await getProjectMemberIds(project.id, [user.id]);
-    await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: '새 공지사항', body: title, projectId: project.id, deepLink: `/projects/${project.id}/boards/${boardId}` });
+    await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: `📢 ${title}`, body: body.length > 80 ? body.slice(0, 80) + '…' : body, projectId: project.id, deepLink: `/projects/${project.id}/boards/${boardId}` });
     toast({ title: '공지사항이 등록되었습니다' });
     invalidateBoard();
   };

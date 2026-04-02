@@ -240,8 +240,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       await sendNotifications({
         userIds: memberIds,
         type: 'GUIDE_UPDATED',
-        title: '가이드 업데이트',
-        body: `"${versionDialogDoc.title}" v${nextVersion}이 등록되었습니다.`,
+        title: `📄 ${versionDialogDoc.title} v${nextVersion}`,
+        body: versionSummary.trim() || '새 버전이 등록되었습니다.',
         projectId,
         deepLink: `/projects/${projectId}/boards/${boardId}`,
       });
