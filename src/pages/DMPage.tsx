@@ -325,6 +325,11 @@ export default function DMPage() {
     setSearchParams({ thread: threadId });
   }, [setSearchParams]);
 
+  const handleThreadCreated = useCallback((threadId: string) => {
+    setSearchParams({ thread: threadId });
+    fetchThreads();
+  }, [setSearchParams, fetchThreads]);
+
   const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
     const isCurrentUserAdmin = user?.id === thread.admin_id;
     const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
