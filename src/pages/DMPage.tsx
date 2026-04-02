@@ -340,11 +340,12 @@ export default function DMPage() {
     fetchThreads();
   }, [setSearchParams, fetchThreads]);
 
-  const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
+  const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: string } => {
     const isCurrentUserAdmin = user?.id === thread.admin_id;
     const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
-    return { profile: profiles[otherId], role: isCurrentUserAdmin ? '작업자' : '관리자' };
-  }, [user?.id, profiles]);
+    const otherRole = isCurrentUserAdmin ? '작업자' : (adminRoles[thread.admin_id] || '관리자');
+    return { profile: profiles[otherId], role: otherRole };
+  }, [user?.id, profiles, adminRoles]);
 
   const getOtherId = useCallback((thread: Thread) => {
     return user?.id === thread.admin_id ? thread.worker_id : thread.admin_id;
