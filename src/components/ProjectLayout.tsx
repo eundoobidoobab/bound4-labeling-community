@@ -9,9 +9,17 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectSidebar } from '@/components/project/ProjectSidebar';
 import { LeaveProjectDialog } from '@/components/project/LeaveProjectDialog';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bell, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bell, Loader2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function ProjectLayout() {
   const { id } = useParams<{ id: string }>();
