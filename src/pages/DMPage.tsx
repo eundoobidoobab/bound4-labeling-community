@@ -157,6 +157,8 @@ export default function DMPage() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
   }, [fetchProfiles, fetchAttachmentsForMessages, fetchReadCursors, updateReadCursor]);
 
+  const [adminRoles, setAdminRoles] = useState<Record<string, string | null>>({});
+
   const fetchThreads = useCallback(async () => {
     if (!projectId || !user) return;
     setLoading(true);
@@ -173,7 +175,7 @@ export default function DMPage() {
     ids.add(user.id);
 
     const threadIds = items.map(t => t.id);
-    const [, messagesRes, cursorsRes] = await Promise.all([
+    const [, messagesRes, cursorsRes, adminRolesRes] = await Promise.all([
       fetchProfiles([...ids]),
       threadIds.length > 0
         ? supabase
@@ -189,7 +191,15 @@ export default function DMPage() {
             .in('thread_id', threadIds)
             .eq('user_id', user.id)
         : Promise.resolve({ data: [] }),
+      supabase
+        .from('project_admins')
+        .select('admin_id, custom_role')
+        .eq('project_id', projectId),
     ]);
+
+    const roleMap: Record<string, string | null> = {};
+    (adminRolesRes.data || []).forEach((a: any) => { roleMap[a.admin_id] = a.custom_role; });
+    setAdminRoles(roleMap);
 
     const lastMsgMap: Record<string, { body: string; created_at: string; sender_id: string }> = {};
     (messagesRes.data || []).forEach((m: any) => {
