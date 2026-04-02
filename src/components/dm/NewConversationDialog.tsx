@@ -172,7 +172,7 @@ export default function NewConversationDialog({ projectId, existingThreads, onTh
                         {u.display_name || u.email.split('@')[0]}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {role === 'admin' ? '작업자' : '관리자'}
+                        {role === 'admin' ? '작업자' : (u.custom_role || '관리자')}
                       </p>
                     </div>
                     {isCreating ? (
