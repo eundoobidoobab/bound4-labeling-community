@@ -157,6 +157,8 @@ export default function DMPage() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
   }, [fetchProfiles, fetchAttachmentsForMessages, fetchReadCursors, updateReadCursor]);
 
+  const [adminRoles, setAdminRoles] = useState<Record<string, string | null>>({});
+
   const fetchThreads = useCallback(async () => {
     if (!projectId || !user) return;
     setLoading(true);
@@ -173,7 +175,7 @@ export default function DMPage() {
     ids.add(user.id);
 
     const threadIds = items.map(t => t.id);
-    const [, messagesRes, cursorsRes] = await Promise.all([
+    const [, messagesRes, cursorsRes, adminRolesRes] = await Promise.all([
       fetchProfiles([...ids]),
       threadIds.length > 0
         ? supabase
@@ -189,7 +191,15 @@ export default function DMPage() {
             .in('thread_id', threadIds)
             .eq('user_id', user.id)
         : Promise.resolve({ data: [] }),
+      supabase
+        .from('project_admins')
+        .select('admin_id, custom_role')
+        .eq('project_id', projectId),
     ]);
+
+    const roleMap: Record<string, string | null> = {};
+    (adminRolesRes.data || []).forEach((a: any) => { roleMap[a.admin_id] = a.custom_role; });
+    setAdminRoles(roleMap);
 
     const lastMsgMap: Record<string, { body: string; created_at: string; sender_id: string }> = {};
     (messagesRes.data || []).forEach((m: any) => {
@@ -330,11 +340,12 @@ export default function DMPage() {
     fetchThreads();
   }, [setSearchParams, fetchThreads]);
 
-  const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: '관리자' | '작업자' } => {
+  const getOtherParticipant = useCallback((thread: Thread): { profile: Profile | undefined; role: string } => {
     const isCurrentUserAdmin = user?.id === thread.admin_id;
     const otherId = isCurrentUserAdmin ? thread.worker_id : thread.admin_id;
-    return { profile: profiles[otherId], role: isCurrentUserAdmin ? '작업자' : '관리자' };
-  }, [user?.id, profiles]);
+    const otherRole = isCurrentUserAdmin ? '작업자' : (adminRoles[thread.admin_id] || '관리자');
+    return { profile: profiles[otherId], role: otherRole };
+  }, [user?.id, profiles, adminRoles]);
 
   const getOtherId = useCallback((thread: Thread) => {
     return user?.id === thread.admin_id ? thread.worker_id : thread.admin_id;
