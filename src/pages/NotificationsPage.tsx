@@ -16,6 +16,7 @@ interface Notification {
   deep_link: string | null;
   is_read: boolean;
   created_at: string;
+  project_id: string | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -28,6 +29,7 @@ const typeLabels: Record<string, string> = {
 export default function NotificationsPage() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [projectNames, setProjectNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -39,7 +41,22 @@ export default function NotificationsPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
-    if (data) setNotifications(data as Notification[]);
+    if (data) {
+      setNotifications(data as Notification[]);
+      // Fetch project names for all unique project_ids
+      const projectIds = [...new Set(data.map((n: any) => n.project_id).filter(Boolean))] as string[];
+      if (projectIds.length > 0) {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name')
+          .in('id', projectIds);
+        if (projects) {
+          const map: Record<string, string> = {};
+          projects.forEach((p: any) => { map[p.id] = p.name; });
+          setProjectNames(map);
+        }
+      }
+    }
     setLoading(false);
   };
 
@@ -127,11 +144,19 @@ export default function NotificationsPage() {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-medium text-primary">
                           {typeLabels[n.type] || n.type}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        {n.project_id && projectNames[n.project_id] && (
+                          <>
+                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-xs text-muted-foreground font-medium truncate max-w-[120px]">
+                              {projectNames[n.project_id]}
+                            </span>
+                          </>
+                        )}
+                        <span className="text-xs text-muted-foreground ml-auto shrink-0">
                           {new Date(n.created_at).toLocaleString('ko-KR')}
                         </span>
                       </div>

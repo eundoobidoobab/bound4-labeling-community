@@ -111,7 +111,7 @@ export default function ProjectDetailPage() {
     }
     if (projectId) {
       const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: '새 공지사항', body: title, projectId, deepLink: `/projects/${projectId}` });
+      await sendNotifications({ userIds: memberIds, type: 'NOTICE_PUBLISHED', title: `📢 ${title}`, body: body.length > 80 ? body.slice(0, 80) + '…' : body, projectId, deepLink: `/projects/${projectId}` });
     }
     toast({ title: '공지사항이 등록되었습니다' });
     invalidate();
