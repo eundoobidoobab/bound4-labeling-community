@@ -101,7 +101,10 @@ export function ProjectSidebar({ project, boards, onLeave, unreadBoardIds = new 
                 <SidebarMenuButton asChild isActive={location.pathname === `/projects/${id}/dm`}>
                   <NavLink to={`/projects/${id}/dm`} className="hover:bg-muted/50" activeClassName="bg-primary/10 text-primary font-medium">
                     <MessageSquare className="h-4 w-4" />
-                    {!collapsed && <span>메시지</span>}
+                    {!collapsed && <span className="flex-1 truncate">메시지</span>}
+                    {hasUnreadDM && !location.pathname.startsWith(`/projects/${id}/dm`) && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
