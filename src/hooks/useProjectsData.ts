@@ -55,11 +55,7 @@ export function useProjectsData(userId: string | undefined, role: string | null)
       let invitations: Invitation[] = [];
       if (userEmail) {
         const { data: invData } = await supabase
-          .from('project_invitations')
-          .select('*')
-          .eq('status', 'PENDING')
-          .eq('email', userEmail)
-          .gt('expires_at', new Date().toISOString());
+          .rpc('get_my_pending_invitations');
 
         if (invData && invData.length > 0) {
           const projectIds = [...new Set(invData.map((inv: any) => inv.project_id))];
