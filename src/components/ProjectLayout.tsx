@@ -5,6 +5,7 @@ import { toastError } from '@/lib/errorUtils';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useBoardUnread } from '@/hooks/useBoardUnread';
+import { useDMUnread } from '@/hooks/useDMUnread';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectSidebar } from '@/components/project/ProjectSidebar';
 import { LeaveProjectDialog } from '@/components/project/LeaveProjectDialog';
