@@ -64,7 +64,7 @@ export default function ProjectLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <ProjectSidebar project={project} boards={boards} onLeave={() => setLeaveDialogOpen(true)} unreadBoardIds={unreadBoardIds} />
+        <ProjectSidebar project={project} boards={boards} onLeave={() => setLeaveDialogOpen(true)} unreadBoardIds={unreadBoardIds} hasUnreadDM={hasUnreadDM} />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center gap-2 border-b border-border bg-card px-4">
             <SidebarTrigger />
