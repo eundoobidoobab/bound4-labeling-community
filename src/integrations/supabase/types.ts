@@ -990,6 +990,17 @@ export type Database = {
           name: string
         }[]
       }
+      get_my_pending_invitations: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          project_id: string
+          status: string
+        }[]
+      }
       has_project_access: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
