@@ -5,6 +5,7 @@ import { toastError } from '@/lib/errorUtils';
 import { useProjectLayout } from '@/hooks/useProjectLayout';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useBoardUnread } from '@/hooks/useBoardUnread';
+import { useDMUnread } from '@/hooks/useDMUnread';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectSidebar } from '@/components/project/ProjectSidebar';
 import { LeaveProjectDialog } from '@/components/project/LeaveProjectDialog';
@@ -30,6 +31,7 @@ export default function ProjectLayout() {
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const unreadCount = useUnreadNotifications(user?.id);
   const { unreadBoardIds, recheckUnread } = useBoardUnread(boards);
+  const { hasUnreadDM, recheckDMUnread } = useDMUnread(id);
 
   const handleLeaveProject = async () => {
     if (!id || !user) return;
@@ -62,7 +64,7 @@ export default function ProjectLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <ProjectSidebar project={project} boards={boards} onLeave={() => setLeaveDialogOpen(true)} unreadBoardIds={unreadBoardIds} />
+        <ProjectSidebar project={project} boards={boards} onLeave={() => setLeaveDialogOpen(true)} unreadBoardIds={unreadBoardIds} hasUnreadDM={hasUnreadDM} />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center gap-2 border-b border-border bg-card px-4">
             <SidebarTrigger />
@@ -105,7 +107,7 @@ export default function ProjectLayout() {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
-            <Outlet context={{ project, boards, recheckUnread }} />
+            <Outlet context={{ project, boards, recheckUnread, recheckDMUnread }} />
           </main>
         </div>
       </div>
