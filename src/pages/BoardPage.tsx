@@ -120,6 +120,18 @@ export default function BoardPage() {
         <p className="text-sm text-muted-foreground mt-1">{boardDescriptions[board?.type || ''] || ''}</p>
       </div>
 
+      {(isNotice || isForum) && (notices.length > 0 || posts.length > 0) && (
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="제목 또는 내용으로 검색..." className="pl-9 pr-9" />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {canCreate && (
         <div className="mb-6">
           {isBug ? (
@@ -136,18 +148,6 @@ export default function BoardPage() {
               titlePlaceholder={isNotice ? '공지 제목' : '제목'}
               onSubmit={isNotice ? handleCreateNotice : handleCreatePost}
             />
-          )}
-        </div>
-      )}
-
-      {(isNotice || isForum) && (notices.length > 0 || posts.length > 0) && (
-        <div className="mb-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="제목 또는 내용으로 검색..." className="pl-9 pr-9" />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
           )}
         </div>
       )}
