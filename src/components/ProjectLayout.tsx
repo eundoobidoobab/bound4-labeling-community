@@ -107,7 +107,7 @@ export default function ProjectLayout() {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
-            <Outlet context={{ project, boards, recheckUnread }} />
+            <Outlet context={{ project, boards, recheckUnread, recheckDMUnread }} />
           </main>
         </div>
       </div>
