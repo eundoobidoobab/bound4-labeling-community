@@ -94,32 +94,35 @@ export function NoticeCard({
               <TruncatedTitle text={notice.title} />
             </div>
           </div>
-          {isAdmin && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />수정
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onTogglePin}>
-                  <Pin className="mr-2 h-4 w-4" />
-                  {notice.is_pinned ? '고정 해제' : '고정'}
-                </DropdownMenuItem>
-                {onViewReads && (
-                  <DropdownMenuItem onClick={onViewReads}>
-                    <Eye className="mr-2 h-4 w-4" />확인율 보기
+          <div className="flex items-center gap-1 shrink-0">
+            {isAdmin && onViewReads && (
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onViewReads}>
+                <Eye className="h-3.5 w-3.5" />
+                확인율
+              </Button>
+            )}
+            {isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil className="mr-2 h-4 w-4" />수정
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />삭제
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  <DropdownMenuItem onClick={onTogglePin}>
+                    <Pin className="mr-2 h-4 w-4" />
+                    {notice.is_pinned ? '고정 해제' : '고정'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />삭제
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pl-16">
@@ -135,15 +138,6 @@ export function NoticeCard({
             <CollapsibleBody text={notice.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="notice" parentId={notice.id} />
-            {isAdmin && onViewReads && (
-              <button
-                onClick={onViewReads}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                확인율 보기
-              </button>
-            )}
           </>
         )}
       </CardContent>
