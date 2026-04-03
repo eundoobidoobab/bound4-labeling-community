@@ -138,15 +138,6 @@ export function NoticeCard({
             <CollapsibleBody text={notice.body} />
             <FeedAttachments attachments={attachments} />
             <FeedComments type="notice" parentId={notice.id} />
-            {isAdmin && onViewReads && (
-              <button
-                onClick={onViewReads}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                확인율 보기
-              </button>
-            )}
           </>
         )}
       </CardContent>
