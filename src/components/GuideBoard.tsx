@@ -247,7 +247,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     return parts.length > 1 ? `.${parts.pop()}` : '';
   };
 
-  const handleDownload = async (filePath: string, fileName?: string) => {
+  const handleDownload = async (filePath: string, fileName?: string, versionId?: string) => {
     const { data } = await supabase.storage.from('guides').download(filePath);
     if (data) {
       const ext = getFileExt(filePath);
@@ -258,8 +258,62 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       a.download = finalName;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Record download
+      if (versionId && user) {
+        await supabase.from('guide_downloads').upsert(
+          { guide_version_id: versionId, user_id: user.id, project_id: projectId },
+          { onConflict: 'guide_version_id,user_id' }
+        );
+        setDownloadCounts(prev => {
+          const next = { ...prev };
+          // We don't know if it was already counted, so just refetch
+          return next;
+        });
+        // Refresh counts
+        if (role === 'admin') {
+          const { data: dlData } = await supabase
+            .from('guide_downloads')
+            .select('guide_version_id')
+            .eq('guide_version_id', versionId);
+          setDownloadCounts(prev => ({ ...prev, [versionId]: dlData?.length || 0 }));
+        }
+      }
     } else {
       toast({ title: '다운로드 실패', variant: 'destructive' });
+    }
+  };
+
+  const openDownloadModal = async (doc: GuideDocument) => {
+    const latestVersion = versions[doc.id]?.[0];
+    if (!latestVersion) return;
+    setDownloadModalDoc(doc);
+
+    // Fetch download records for this version
+    const { data: dlData } = await supabase
+      .from('guide_downloads')
+      .select('user_id, downloaded_at')
+      .eq('guide_version_id', latestVersion.id);
+
+    const dlUserIds = (dlData || []).map((d: any) => d.user_id);
+    
+    // Get all worker profiles
+    const workers = membersData?.members || [];
+    setAllWorkerProfiles(workers.map(w => ({ id: w.worker_id, display_name: w.display_name, email: w.email })));
+
+    if (dlUserIds.length > 0) {
+      const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', dlUserIds);
+      const profMap: Record<string, any> = {};
+      (profs || []).forEach((p: any) => { profMap[p.id] = p; });
+      
+      setDownloadedUsers((dlData || []).map((d: any) => ({
+        id: d.user_id,
+        display_name: profMap[d.user_id]?.display_name || null,
+        email: profMap[d.user_id]?.email || '',
+        downloaded_at: d.downloaded_at,
+      })));
+    } else {
+      setDownloadedUsers([]);
     }
   };
 
