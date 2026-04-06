@@ -498,10 +498,12 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
                 )}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    신청 마감: {formatDateTime(selectedCall.apply_deadline)}
-                  </span>
+                  {selectedCall.apply_deadline && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      신청 마감: {formatDateTime(selectedCall.apply_deadline)}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />
                     {applications.length}명 신청
