@@ -165,13 +165,12 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           setDownloadCounts(counts);
         }
 
-        // Count total workers
-        const { count } = await supabase
-          .from('project_memberships')
-          .select('*', { count: 'exact', head: true })
-          .eq('project_id', projectId)
-          .eq('status', 'ACTIVE');
-        setTotalWorkers(count || 0);
+        // Count total members (workers + admins)
+        const [{ count: workerCount }, { count: adminCount }] = await Promise.all([
+          supabase.from('project_memberships').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'ACTIVE'),
+          supabase.from('project_admins').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
+        ]);
+        setTotalWorkers((workerCount || 0) + (adminCount || 0));
       }
     }
 
@@ -299,9 +298,11 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
 
     const dlUserIds = (dlData || []).map((d: any) => d.user_id);
     
-    // Get all worker profiles
-    const workers = membersData?.members || [];
-    setAllWorkerProfiles(workers.map(w => ({ id: w.worker_id, display_name: w.display_name, email: w.email })));
+    // Get all member profiles (workers + admins)
+    const workers = (membersData?.members || []).map(w => ({ id: w.worker_id, display_name: w.display_name, email: w.email }));
+    const admins = (membersData?.admins || []).map(a => ({ id: a.admin_id, display_name: a.display_name, email: a.email }));
+    const allProfiles = [...admins, ...workers.filter(w => !admins.some(a => a.id === w.id))];
+    setAllWorkerProfiles(allProfiles);
 
     if (dlUserIds.length > 0) {
       const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', dlUserIds);
