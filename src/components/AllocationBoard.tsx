@@ -211,7 +211,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       setEditCall(null);
       fetchCalls();
       if (selectedCall?.id === editCall.id) {
-        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, work_date: editWorkDate, apply_deadline: new Date(editDeadline).toISOString() });
+        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, apply_deadline: new Date(editDeadline).toISOString() });
       }
     } catch (err: any) {
       toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
