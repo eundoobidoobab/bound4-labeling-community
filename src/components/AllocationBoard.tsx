@@ -679,10 +679,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
               </div>
               <div className="space-y-2">
-                <Label>신청 마감</Label>
+                <Label>신청 마감 (선택)</Label>
                 <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+                <p className="text-xs text-muted-foreground">설정하면 마감일이 지나면 자동으로 신청이 마감됩니다</p>
               </div>
-              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
+              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim()}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
               </Button>
             </div>
