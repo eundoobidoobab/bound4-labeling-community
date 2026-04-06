@@ -13,8 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { motion } from 'framer-motion';
 import {
   Loader2, Plus, Calendar, Clock, Users, CheckCircle2, XCircle,
-  UserCheck, ChevronLeft, ChevronRight, AlertTriangle, Package, Send
+  UserCheck, ChevronLeft, ChevronRight, AlertTriangle, Package, Send, MoreHorizontal, Pencil, Trash2
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -95,6 +96,14 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   // Worker's own applications
   const [myApplications, setMyApplications] = useState<Record<string, Application>>({});
+
+  // Edit call dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCall, setEditCall] = useState<AllocationCall | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editWorkDate, setEditWorkDate] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
 
   useEffect(() => {
     fetchCalls();
@@ -185,6 +194,57 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEditCall = async () => {
+    if (!editCall || !editTitle.trim() || !editWorkDate || !editDeadline) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('allocation_calls').update({
+        title: editTitle.trim(),
+        description: editDesc.trim() || null,
+        work_date: editWorkDate,
+        apply_deadline: new Date(editDeadline).toISOString(),
+      }).eq('id', editCall.id);
+      if (error) throw error;
+      toast({ title: '공고가 수정되었습니다' });
+      setEditOpen(false);
+      setEditCall(null);
+      fetchCalls();
+      if (selectedCall?.id === editCall.id) {
+        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, work_date: editWorkDate, apply_deadline: new Date(editDeadline).toISOString() });
+      }
+    } catch (err: any) {
+      toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCall = async (call: AllocationCall) => {
+    if (!confirm(`"${call.title}" 공고를 삭제하시겠습니까?`)) return;
+    try {
+      const { error } = await supabase.from('allocation_calls').delete().eq('id', call.id);
+      if (error) throw error;
+      toast({ title: '공고가 삭제되었습니다' });
+      if (selectedCall?.id === call.id) setSelectedCall(null);
+      fetchCalls();
+    } catch (err: any) {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const openEditDialog = (call: AllocationCall, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditCall(call);
+    setEditTitle(call.title);
+    setEditDesc(call.description || '');
+    setEditWorkDate(call.work_date);
+    // Convert ISO deadline to datetime-local format
+    const dl = new Date(call.apply_deadline);
+    const local = dl.getFullYear() + '-' + String(dl.getMonth()+1).padStart(2,'0') + '-' + String(dl.getDate()).padStart(2,'0') + 'T' + String(dl.getHours()).padStart(2,'0') + ':' + String(dl.getMinutes()).padStart(2,'0');
+    setEditDeadline(local);
+    setEditOpen(true);
   };
 
   const handleApply = async () => {
@@ -403,6 +463,23 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-xl font-bold text-foreground">{selectedCall.title}</h2>
                   <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
+                          <Pencil className="mr-2 h-4 w-4" />수정
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
+                          <Trash2 className="mr-2 h-4 w-4" />삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 {selectedCall.description && (
                   <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
@@ -568,6 +645,37 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
             )}
           </>
         )}
+        {/* Edit call dialog (detail view) */}
+        <Dialog open={editOpen} onOpenChange={(v) => { if (!v) { setEditOpen(false); setEditCall(null); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>공고 수정</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>공고 제목</Label>
+                <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>설명 (선택)</Label>
+                <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>작업일</Label>
+                  <Input type="date" value={editWorkDate} onChange={e => setEditWorkDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>신청 마감</Label>
+                  <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+                </div>
+              </div>
+              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editWorkDate || !editDeadline}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         {applyDialog}
       </div>
     );
@@ -623,7 +731,26 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(call); }}>
+                                <Pencil className="mr-2 h-4 w-4" />수정
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteCall(call); }}>
+                                <Trash2 className="mr-2 h-4 w-4" />삭제
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -660,6 +787,38 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
             </div>
             <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newWorkDate || !newDeadline}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 등록
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit call dialog */}
+      <Dialog open={editOpen} onOpenChange={(v) => { if (!v) { setEditOpen(false); setEditCall(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>공고 수정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>공고 제목</Label>
+              <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>설명 (선택)</Label>
+              <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>작업일</Label>
+                <Input type="date" value={editWorkDate} onChange={e => setEditWorkDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>신청 마감</Label>
+                <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editWorkDate || !editDeadline}>
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
             </Button>
           </div>
         </DialogContent>

@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, X, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -61,6 +62,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [historyDoc, setHistoryDoc] = useState<GuideDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const versionFileRef = useRef<HTMLInputElement>(null);
 
@@ -289,6 +292,43 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
+  const handleUpdateDocTitle = async (docId: string) => {
+    if (!editTitle.trim()) return;
+    const { error } = await supabase.from('guide_documents').update({ title: editTitle.trim() }).eq('id', docId);
+    if (error) {
+      toast({ title: '수정 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '문서 제목이 수정되었습니다' });
+      setEditingDocId(null);
+      fetchData();
+    }
+  };
+
+  const handleDeleteDocument = async (doc: GuideDocument) => {
+    if (!confirm(`"${doc.title}" 문서를 삭제하시겠습니까? 모든 버전이 함께 삭제됩니다.`)) return;
+    try {
+      // Delete storage files
+      const docVersions = versions[doc.id] || [];
+      if (docVersions.length > 0) {
+        const filePaths = docVersions.map(v => v.file_path);
+        await supabase.storage.from('guides').remove(filePaths);
+        // Delete versions first (FK constraint)
+        await supabase.from('guide_versions').delete().eq('document_id', doc.id);
+      }
+      // Delete project_latest_guide if it references this doc's versions
+      const versionIds = docVersions.map(v => v.id);
+      if (versionIds.length > 0) {
+        await supabase.from('project_latest_guide').delete().in('guide_version_id', versionIds);
+      }
+      const { error } = await supabase.from('guide_documents').delete().eq('id', doc.id);
+      if (error) throw error;
+      toast({ title: '문서가 삭제되었습니다' });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -332,7 +372,21 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base">{doc.title}</CardTitle>
+                          {editingDocId === doc.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                className="h-8 text-base font-semibold"
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateDocTitle(doc.id); if (e.key === 'Escape') setEditingDocId(null); }}
+                                autoFocus
+                              />
+                              <Button size="sm" variant="ghost" onClick={() => handleUpdateDocTitle(doc.id)}>저장</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingDocId(null)}>취소</Button>
+                            </div>
+                          ) : (
+                            <CardTitle className="text-base">{doc.title}</CardTitle>
+                          )}
                           <div className="flex items-center gap-2 mt-1">
                             {latest && (
                               <>
@@ -354,6 +408,23 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <Badge variant="secondary" className="gap-1 text-primary">
                             <CheckCircle2 className="h-3 w-3" /> 확인됨
                           </Badge>
+                        )}
+                        {role === 'admin' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => { setEditingDocId(doc.id); setEditTitle(doc.title); }}>
+                                <Pencil className="mr-2 h-4 w-4" />제목 수정
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteDocument(doc)}>
+                                <Trash2 className="mr-2 h-4 w-4" />삭제
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     </div>
