@@ -292,6 +292,43 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
+  const handleUpdateDocTitle = async (docId: string) => {
+    if (!editTitle.trim()) return;
+    const { error } = await supabase.from('guide_documents').update({ title: editTitle.trim() }).eq('id', docId);
+    if (error) {
+      toast({ title: '수정 실패', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '문서 제목이 수정되었습니다' });
+      setEditingDocId(null);
+      fetchData();
+    }
+  };
+
+  const handleDeleteDocument = async (doc: GuideDocument) => {
+    if (!confirm(`"${doc.title}" 문서를 삭제하시겠습니까? 모든 버전이 함께 삭제됩니다.`)) return;
+    try {
+      // Delete storage files
+      const docVersions = versions[doc.id] || [];
+      if (docVersions.length > 0) {
+        const filePaths = docVersions.map(v => v.file_path);
+        await supabase.storage.from('guides').remove(filePaths);
+        // Delete versions first (FK constraint)
+        await supabase.from('guide_versions').delete().eq('document_id', doc.id);
+      }
+      // Delete project_latest_guide if it references this doc's versions
+      const versionIds = docVersions.map(v => v.id);
+      if (versionIds.length > 0) {
+        await supabase.from('project_latest_guide').delete().in('guide_version_id', versionIds);
+      }
+      const { error } = await supabase.from('guide_documents').delete().eq('id', doc.id);
+      if (error) throw error;
+      toast({ title: '문서가 삭제되었습니다' });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
