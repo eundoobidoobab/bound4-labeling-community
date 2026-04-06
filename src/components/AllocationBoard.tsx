@@ -721,10 +721,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            작업일: {call.work_date}
-                          </span>
-                          <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
                             마감: {formatDateTime(call.apply_deadline)}
                           </span>
