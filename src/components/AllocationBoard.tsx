@@ -489,6 +489,19 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                         <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
                           <Pencil className="mr-2 h-4 w-4" />수정
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          const newClosed = !selectedCall.is_closed;
+                          await supabase.from('allocation_calls').update({ is_closed: newClosed } as any).eq('id', selectedCall.id);
+                          toast({ title: newClosed ? '마감 처리되었습니다' : '마감이 해제되었습니다' });
+                          fetchCalls();
+                          fetchCallDetail({ ...selectedCall, is_closed: newClosed });
+                        }}>
+                          {selectedCall.is_closed ? (
+                            <><CheckCircle2 className="mr-2 h-4 w-4" />마감 해제</>
+                          ) : (
+                            <><XCircle className="mr-2 h-4 w-4" />마감 처리</>
+                          )}
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
                           <Trash2 className="mr-2 h-4 w-4" />삭제
                         </DropdownMenuItem>
