@@ -557,7 +557,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   ) : (
                     <div className="border border-border rounded-lg overflow-hidden">
                       {/* Table header */}
-                      <div className="grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
+                      <div className="grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
                         <div>
                           <Checkbox
                             checked={checkedIds.size === applications.length && applications.length > 0}
@@ -565,6 +565,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                           />
                         </div>
                         <div>작업자</div>
+                        <div>작업자 ID</div>
                         <div>희망 수량</div>
                         <div>신청 시각</div>
                         <div className="text-right">상태</div>
