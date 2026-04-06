@@ -199,14 +199,14 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleEditCall = async () => {
-    if (!editCall || !editTitle.trim() || !editDeadline) return;
+    if (!editCall || !editTitle.trim()) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').update({
         title: editTitle.trim(),
         description: editDesc.trim() || null,
-        apply_deadline: new Date(editDeadline).toISOString(),
-      }).eq('id', editCall.id);
+        apply_deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+      } as any).eq('id', editCall.id);
       if (error) throw error;
       toast({ title: '공고가 수정되었습니다' });
       setEditOpen(false);
