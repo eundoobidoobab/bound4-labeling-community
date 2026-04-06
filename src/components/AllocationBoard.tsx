@@ -74,7 +74,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newWorkDate, setNewWorkDate] = useState('');
+  
   const [newDeadline, setNewDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
