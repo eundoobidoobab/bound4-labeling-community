@@ -28,6 +28,7 @@ interface AllocationCall {
   apply_deadline: string;
   created_by: string;
   created_at: string;
+  is_closed: boolean;
 }
 
 interface Application {
