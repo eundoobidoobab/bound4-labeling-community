@@ -560,6 +560,17 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   setApplyCallId(selectedCall.id);
                   setApplyOpen(true);
                 }}
+                onCancelClick={async () => {
+                  if (!myApp) return;
+                  const { error } = await supabase.from('allocation_applications').delete().eq('id', myApp.id);
+                  if (error) {
+                    toast({ title: '취소 실패', description: error.message, variant: 'destructive' });
+                  } else {
+                    toast({ title: '신청이 취소되었습니다' });
+                    fetchCalls();
+                    fetchCallDetail(selectedCall);
+                  }
+                }}
               />
             )}
 
