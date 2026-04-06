@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
+import { Loader2, Upload, FileText, Download, Plus, History, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 import { useMembersData } from '@/hooks/useMembersData';
@@ -74,8 +74,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const [historyDoc, setHistoryDoc] = useState<GuideDocument | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewTitle, setPreviewTitle] = useState('');
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -320,15 +318,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
-  const handlePreview = async (filePath: string, title?: string) => {
-    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 300);
-    if (data?.signedUrl) {
-      setPreviewUrl(data.signedUrl);
-      setPreviewTitle(title || '미리보기');
-    } else {
-      toast({ title: '미리보기 실패', variant: 'destructive' });
-    }
-  };
 
   const handleUpdateDocTitle = async (docId: string) => {
     if (!editTitle.trim()) return;
@@ -393,7 +382,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
             const docVersions = versions[doc.id] || [];
             const latest = docVersions[0];
             const author = latest ? profiles[latest.created_by] : null;
-            const isAcked = latest ? acknowledgements.has(latest.id) : false;
+            
 
             return (
               <motion.div key={doc.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -437,11 +426,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {latest && isAcked && (
-                          <Badge variant="secondary" className="gap-1 text-primary">
-                            <CheckCircle2 className="h-3 w-3" /> 확인됨
-                          </Badge>
-                        )}
                         {role === 'admin' && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -468,14 +452,9 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {latest && (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path, doc.title)}>
-                            <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
-                            <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
-                          </Button>
-                        </>
+                        <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
+                          <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
+                        </Button>
                       )}
                       {docVersions.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => setHistoryDoc(doc)}>
@@ -638,9 +617,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(ver.file_path, `${historyDoc?.title} v${ver.version_number}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`, ver.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
@@ -652,23 +628,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Preview dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={(v) => !v && setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle>{previewTitle}</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 px-6 pb-6">
-            {previewUrl && (
-              <iframe
-                src={previewUrl}
-                className="w-full h-full rounded-lg border border-border"
-                title={previewTitle}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Download rate modal */}
       <Dialog open={!!downloadModalDoc} onOpenChange={(v) => !v && setDownloadModalDoc(null)}>
