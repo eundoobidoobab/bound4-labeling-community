@@ -382,7 +382,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
             const docVersions = versions[doc.id] || [];
             const latest = docVersions[0];
             const author = latest ? profiles[latest.created_by] : null;
-            const isAcked = latest ? acknowledgements.has(latest.id) : false;
+            
 
             return (
               <motion.div key={doc.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
