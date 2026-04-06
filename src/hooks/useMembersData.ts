@@ -35,7 +35,7 @@ export function useMembersData(projectId: string | undefined) {
       const [membersRes, adminsRes, invitationsRes] = await Promise.all([
         supabase.from('project_memberships').select('*').eq('project_id', projectId!).eq('status', 'ACTIVE'),
         supabase.from('project_admins').select('*').eq('project_id', projectId!),
-        supabase.from('project_invitations').select('*').eq('project_id', projectId!).order('created_at', { ascending: false }),
+        supabase.from('project_invitations_safe').select('*').eq('project_id', projectId!).order('created_at', { ascending: false }),
       ]);
 
       const workerIds = (membersRes.data || []).map((m: any) => m.worker_id);
