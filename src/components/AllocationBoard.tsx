@@ -768,6 +768,10 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                               마감: {formatDateTime(call.apply_deadline)}
                             </span>
                           )}
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            {applicationCounts[call.id] || 0}명 신청
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
