@@ -53,7 +53,16 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [versions, setVersions] = useState<Record<string, GuideVersion[]>>({});
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [acknowledgements, setAcknowledgements] = useState<Set<string>>(new Set());
+  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({});
+  const [totalWorkers, setTotalWorkers] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Download rate modal
+  const [downloadModalDoc, setDownloadModalDoc] = useState<GuideDocument | null>(null);
+  const [downloadedUsers, setDownloadedUsers] = useState<{ id: string; display_name: string | null; email: string; downloaded_at: string }[]>([]);
+  const [allWorkerProfiles, setAllWorkerProfiles] = useState<{ id: string; display_name: string | null; email: string }[]>([]);
+
+  const { data: membersData } = useMembersData(projectId);
 
   // Unified upload dialog
   const [uploadOpen, setUploadOpen] = useState(false);
