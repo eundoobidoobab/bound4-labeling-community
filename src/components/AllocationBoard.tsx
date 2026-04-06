@@ -1005,14 +1005,21 @@ function WorkerDetailSection({
     return (
       <Card>
         <CardContent className="py-6">
-          <div className="flex items-center gap-3">
-            <Icon className={`h-5 w-5 ${s.color}`} />
-            <div>
-              <p className="text-sm text-foreground">{s.label}</p>
-              {myApp.desired_quantity && (
-                <p className="text-xs text-muted-foreground mt-1">희망 수량: {myApp.desired_quantity}</p>
-              )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Icon className={`h-5 w-5 ${s.color}`} />
+              <div>
+                <p className="text-sm text-foreground">{s.label}</p>
+                {myApp.desired_quantity && (
+                  <p className="text-xs text-muted-foreground mt-1">희망 수량: {myApp.desired_quantity}</p>
+                )}
+              </div>
             </div>
+            {myApp.status === 'APPLIED' && (
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive shrink-0" onClick={onCancelClick}>
+                신청 취소
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
