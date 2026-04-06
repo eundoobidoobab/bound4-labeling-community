@@ -197,7 +197,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleEditCall = async () => {
-    if (!editCall || !editTitle.trim() || !editWorkDate || !editDeadline) return;
+    if (!editCall || !editTitle.trim() || !editDeadline) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').update({
