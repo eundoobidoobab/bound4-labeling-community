@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotificationsRealtime } from '@/hooks/useNotificationsRealtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Bell, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bell, Check, Loader2, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Notification {
@@ -41,10 +42,9 @@ export default function NotificationsPage() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(100);
     if (data) {
       setNotifications(data as Notification[]);
-      // Fetch project names for all unique project_ids
       const projectIds = [...new Set(data.map((n: any) => n.project_id).filter(Boolean))] as string[];
       if (projectIds.length > 0) {
         const { data: projects } = await supabase
@@ -65,7 +65,6 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [user]);
 
-  // Realtime subscription via custom hook
   const handleNewNotification = useCallback((newNotif: Notification) => {
     setNotifications(prev => {
       if (prev.some(n => n.id === newNotif.id)) return prev;
@@ -95,6 +94,31 @@ export default function NotificationsPage() {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };
 
+  // Group notifications by project
+  const groupedNotifications = useMemo(() => {
+    const projectMap = new Map<string | null, Notification[]>();
+
+    for (const n of notifications) {
+      const key = n.project_id;
+      if (!projectMap.has(key)) projectMap.set(key, []);
+      projectMap.get(key)!.push(n);
+    }
+
+    // Sort: unread first, then by latest notification time
+    const entries = [...projectMap.entries()].sort((a, b) => {
+      const aUnread = a[1].some(n => !n.is_read) ? 1 : 0;
+      const bUnread = b[1].some(n => !n.is_read) ? 1 : 0;
+      if (aUnread !== bUnread) return bUnread - aUnread;
+      return new Date(b[1][0].created_at).getTime() - new Date(a[1][0].created_at).getTime();
+    });
+
+    return entries.map(([projectId, notifs]) => ({
+      projectId,
+      projectName: projectId ? (projectNames[projectId] || '알 수 없는 프로젝트') : '일반',
+      notifications: notifs,
+    }));
+  }, [notifications, projectNames]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -121,55 +145,66 @@ export default function NotificationsPage() {
             <p className="text-muted-foreground">알림이 없습니다</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {notifications.map((n, i) => (
-              <motion.div
-                key={n.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
-                <Card
-                  className={`cursor-pointer transition-colors ${
-                    !n.is_read ? 'border-primary/30 bg-primary/5' : ''
-                  }`}
-                  onClick={() => {
-                    if (!n.is_read) markAsRead(n.id);
-                    if (n.deep_link) navigate(n.deep_link);
-                  }}
-                >
-                  <CardContent className="flex items-start gap-3 p-4">
-                    <div
-                      className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
-                        n.is_read ? 'bg-transparent' : 'bg-primary'
-                      }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-medium text-primary">
-                          {typeLabels[n.type] || n.type}
-                        </span>
-                        {n.project_id && projectNames[n.project_id] && (
-                          <>
-                            <span className="text-xs text-muted-foreground">·</span>
-                            <span className="text-xs text-muted-foreground font-medium truncate max-w-[120px]">
-                              {projectNames[n.project_id]}
-                            </span>
-                          </>
-                        )}
-                        <span className="text-xs text-muted-foreground ml-auto shrink-0">
-                          {new Date(n.created_at).toLocaleString('ko-KR')}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm font-medium">{n.title}</p>
-                      {n.body && (
-                        <p className="mt-0.5 text-xs text-muted-foreground truncate">{n.body}</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+          <div className="space-y-6">
+            {groupedNotifications.map((group) => {
+              const unreadCount = group.notifications.filter(n => !n.is_read).length;
+              return (
+                <div key={group.projectId ?? '_none'}>
+                  {/* Project group header */}
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold text-foreground">{group.projectName}</span>
+                    {unreadCount > 0 && (
+                      <Badge variant="default" className="text-[10px] h-5 px-1.5">{unreadCount}</Badge>
+                    )}
+                  </div>
+
+                  {/* Notification cards */}
+                  <div className="space-y-2">
+                    {group.notifications.map((n, i) => (
+                      <motion.div
+                        key={n.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                      >
+                        <Card
+                          className={`cursor-pointer transition-colors ${
+                            !n.is_read ? 'border-primary/30 bg-primary/5' : ''
+                          }`}
+                          onClick={() => {
+                            if (!n.is_read) markAsRead(n.id);
+                            if (n.deep_link) navigate(n.deep_link);
+                          }}
+                        >
+                          <CardContent className="flex items-start gap-3 p-4">
+                            <div
+                              className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                                n.is_read ? 'bg-transparent' : 'bg-primary'
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-medium text-primary">
+                                  {typeLabels[n.type] || n.type}
+                                </span>
+                                <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                                  {new Date(n.created_at).toLocaleString('ko-KR')}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm font-medium">{n.title}</p>
+                              {n.body && (
+                                <p className="mt-0.5 text-xs text-muted-foreground truncate">{n.body}</p>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
