@@ -453,6 +453,45 @@ export type Database = {
           },
         ]
       }
+      guide_downloads: {
+        Row: {
+          downloaded_at: string
+          guide_version_id: string
+          id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          downloaded_at?: string
+          guide_version_id: string
+          id?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          downloaded_at?: string
+          guide_version_id?: string
+          id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_downloads_guide_version_id_fkey"
+            columns: ["guide_version_id"]
+            isOneToOne: false
+            referencedRelation: "guide_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guide_downloads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guide_versions: {
         Row: {
           created_at: string

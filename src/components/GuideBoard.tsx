@@ -9,11 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
+import { useMembersData } from '@/hooks/useMembersData';
 
 interface GuideDocument {
   id: string;
@@ -50,7 +53,16 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [versions, setVersions] = useState<Record<string, GuideVersion[]>>({});
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [acknowledgements, setAcknowledgements] = useState<Set<string>>(new Set());
+  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({});
+  const [totalWorkers, setTotalWorkers] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Download rate modal
+  const [downloadModalDoc, setDownloadModalDoc] = useState<GuideDocument | null>(null);
+  const [downloadedUsers, setDownloadedUsers] = useState<{ id: string; display_name: string | null; email: string; downloaded_at: string }[]>([]);
+  const [allWorkerProfiles, setAllWorkerProfiles] = useState<{ id: string; display_name: string | null; email: string }[]>([]);
+
+  const { data: membersData } = useMembersData(projectId);
 
   // Unified upload dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -137,9 +149,31 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           }
         }
       }
-    }
 
-    setLoading(false);
+      // Fetch download counts for latest versions (admin)
+      if (role === 'admin') {
+        const latestIds = docList.map(d => versionMap[d.id]?.[0]?.id).filter(Boolean);
+        if (latestIds.length > 0) {
+          const { data: dlData } = await supabase
+            .from('guide_downloads')
+            .select('guide_version_id')
+            .in('guide_version_id', latestIds);
+          const counts: Record<string, number> = {};
+          (dlData || []).forEach((d: any) => {
+            counts[d.guide_version_id] = (counts[d.guide_version_id] || 0) + 1;
+          });
+          setDownloadCounts(counts);
+        }
+
+        // Count total workers
+        const { count } = await supabase
+          .from('project_memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', projectId)
+          .eq('status', 'ACTIVE');
+        setTotalWorkers(count || 0);
+      }
+    }
   };
 
   const openUploadDialog = (mode: 'new' | 'version', doc?: GuideDocument) => {
@@ -213,7 +247,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     return parts.length > 1 ? `.${parts.pop()}` : '';
   };
 
-  const handleDownload = async (filePath: string, fileName?: string) => {
+  const handleDownload = async (filePath: string, fileName?: string, versionId?: string) => {
     const { data } = await supabase.storage.from('guides').download(filePath);
     if (data) {
       const ext = getFileExt(filePath);
@@ -224,8 +258,62 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       a.download = finalName;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Record download
+      if (versionId && user) {
+        await supabase.from('guide_downloads').upsert(
+          { guide_version_id: versionId, user_id: user.id, project_id: projectId },
+          { onConflict: 'guide_version_id,user_id' }
+        );
+        setDownloadCounts(prev => {
+          const next = { ...prev };
+          // We don't know if it was already counted, so just refetch
+          return next;
+        });
+        // Refresh counts
+        if (role === 'admin') {
+          const { data: dlData } = await supabase
+            .from('guide_downloads')
+            .select('guide_version_id')
+            .eq('guide_version_id', versionId);
+          setDownloadCounts(prev => ({ ...prev, [versionId]: dlData?.length || 0 }));
+        }
+      }
     } else {
       toast({ title: '다운로드 실패', variant: 'destructive' });
+    }
+  };
+
+  const openDownloadModal = async (doc: GuideDocument) => {
+    const latestVersion = versions[doc.id]?.[0];
+    if (!latestVersion) return;
+    setDownloadModalDoc(doc);
+
+    // Fetch download records for this version
+    const { data: dlData } = await supabase
+      .from('guide_downloads')
+      .select('user_id, downloaded_at')
+      .eq('guide_version_id', latestVersion.id);
+
+    const dlUserIds = (dlData || []).map((d: any) => d.user_id);
+    
+    // Get all worker profiles
+    const workers = membersData?.members || [];
+    setAllWorkerProfiles(workers.map(w => ({ id: w.worker_id, display_name: w.display_name, email: w.email })));
+
+    if (dlUserIds.length > 0) {
+      const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', dlUserIds);
+      const profMap: Record<string, any> = {};
+      (profs || []).forEach((p: any) => { profMap[p.id] = p; });
+      
+      setDownloadedUsers((dlData || []).map((d: any) => ({
+        id: d.user_id,
+        display_name: profMap[d.user_id]?.display_name || null,
+        email: profMap[d.user_id]?.email || '',
+        downloaded_at: d.downloaded_at,
+      })));
+    } else {
+      setDownloadedUsers([]);
     }
   };
 
@@ -381,7 +469,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path, doc.title)}>
                             <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`)}>
+                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
                             <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
                           </Button>
                         </>
@@ -389,6 +477,12 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       {docVersions.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => setHistoryDoc(doc)}>
                           <History className="mr-1 h-3.5 w-3.5" /> 버전 이력 ({docVersions.length})
+                        </Button>
+                      )}
+                      {role === 'admin' && latest && (
+                        <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={() => openDownloadModal(doc)}>
+                          <Users className="mr-1 h-3.5 w-3.5" />
+                          다운로드율 {downloadCounts[latest.id] || 0}/{totalWorkers}
                         </Button>
                       )}
                     </div>
@@ -544,7 +638,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(ver.file_path, `${historyDoc?.title} v${ver.version_number}`)}>
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`, ver.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
                   </div>
@@ -570,6 +664,79 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Download rate modal */}
+      <Dialog open={!!downloadModalDoc} onOpenChange={(v) => !v && setDownloadModalDoc(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>다운로드 현황 — {downloadModalDoc?.title}</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="all" className="flex-1">전체 ({allWorkerProfiles.length})</TabsTrigger>
+              <TabsTrigger value="downloaded" className="flex-1">다운로드 ({downloadedUsers.length})</TabsTrigger>
+              <TabsTrigger value="not" className="flex-1">미다운로드 ({allWorkerProfiles.length - downloadedUsers.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="all" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {allWorkerProfiles.map(w => {
+                const dl = downloadedUsers.find(d => d.id === w.id);
+                return (
+                  <div key={w.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {(w.display_name || w.email || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{w.display_name || w.email}</p>
+                    </div>
+                    {dl ? (
+                      <span className="text-xs text-primary flex items-center gap-1">
+                        <Download className="h-3 w-3" /> {formatDateTime(dl.downloaded_at)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">미다운로드</span>
+                    )}
+                  </div>
+                );
+              })}
+            </TabsContent>
+            <TabsContent value="downloaded" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {downloadedUsers.map(d => (
+                <div key={d.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(d.display_name || d.email || '?').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{d.display_name || d.email}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{formatDateTime(d.downloaded_at)}</span>
+                </div>
+              ))}
+              {downloadedUsers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">아직 다운로드한 멤버가 없습니다</p>}
+            </TabsContent>
+            <TabsContent value="not" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {allWorkerProfiles.filter(w => !downloadedUsers.some(d => d.id === w.id)).map(w => (
+                <div key={w.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                      {(w.display_name || w.email || '?').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{w.display_name || w.email}</p>
+                  </div>
+                </div>
+              ))}
+              {allWorkerProfiles.filter(w => !downloadedUsers.some(d => d.id === w.id)).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">모든 멤버가 다운로드했습니다</p>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
