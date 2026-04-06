@@ -1,0 +1,1 @@
+ALTER FUNCTION public.validate_application_deadline() SET search_path = public;
