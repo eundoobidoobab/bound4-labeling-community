@@ -437,11 +437,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {latest && isAcked && (
-                          <Badge variant="secondary" className="gap-1 text-primary">
-                            <CheckCircle2 className="h-3 w-3" /> 확인됨
-                          </Badge>
-                        )}
                         {role === 'admin' && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
