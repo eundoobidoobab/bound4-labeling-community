@@ -394,8 +394,8 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   const getAppStatusUI = (status: string) => {
     switch (status) {
-      case 'APPLIED': return { label: '미선택', color: 'text-muted-foreground', icon: XCircle };
-      case 'SELECTED': return { label: '선택됨', color: 'text-primary', icon: CheckCircle2 };
+      case 'APPLIED': return { label: '할당 전', color: 'text-muted-foreground', icon: Clock };
+      case 'SELECTED': return { label: '할당 완료', color: 'text-primary', icon: CheckCircle2 };
       case 'REJECTED': return { label: '미선발', color: 'text-destructive', icon: XCircle };
       case 'WITHDRAWN': return { label: '철회', color: 'text-muted-foreground', icon: AlertTriangle };
       default: return { label: status, color: 'text-muted-foreground', icon: Clock };
