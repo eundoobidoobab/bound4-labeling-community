@@ -180,7 +180,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         board_id: boardId,
         title: newTitle.trim(),
         description: newDesc.trim() || null,
-        work_date: newWorkDate,
+        work_date: new Date().toISOString().slice(0, 10),
         apply_deadline: new Date(newDeadline).toISOString(),
         created_by: user.id,
       });
