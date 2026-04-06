@@ -64,7 +64,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const versionFileRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
