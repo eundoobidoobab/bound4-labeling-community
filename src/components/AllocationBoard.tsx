@@ -481,9 +481,41 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         </button>
 
         {/* Call info card */}
-        <Card className="mb-6">
+        <Card className="mb-6 relative">
           <CardContent className="py-6">
-            <div className="flex items-start gap-4">
+            {isAdmin && (
+              <div className="absolute top-4 right-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
+                      <Pencil className="mr-2 h-4 w-4" />수정
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      const newClosed = !selectedCall.is_closed;
+                      await supabase.from('allocation_calls').update({ is_closed: newClosed } as any).eq('id', selectedCall.id);
+                      toast({ title: newClosed ? '마감 처리되었습니다' : '마감이 해제되었습니다' });
+                      fetchCalls();
+                      fetchCallDetail({ ...selectedCall, is_closed: newClosed });
+                    }}>
+                      {selectedCall.is_closed ? (
+                        <><CheckCircle2 className="mr-2 h-4 w-4" />마감 해제</>
+                      ) : (
+                        <><XCircle className="mr-2 h-4 w-4" />마감 처리</>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
+                      <Trash2 className="mr-2 h-4 w-4" />삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+            <div className="flex items-start gap-4 pr-10">
               <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
                 <Calendar className="h-6 w-6 text-muted-foreground" />
               </div>
@@ -491,36 +523,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-xl font-bold text-foreground">{selectedCall.title}</h2>
                   <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
-                  {isAdmin && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
-                          <Pencil className="mr-2 h-4 w-4" />수정
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={async () => {
-                          const newClosed = !selectedCall.is_closed;
-                          await supabase.from('allocation_calls').update({ is_closed: newClosed } as any).eq('id', selectedCall.id);
-                          toast({ title: newClosed ? '마감 처리되었습니다' : '마감이 해제되었습니다' });
-                          fetchCalls();
-                          fetchCallDetail({ ...selectedCall, is_closed: newClosed });
-                        }}>
-                          {selectedCall.is_closed ? (
-                            <><CheckCircle2 className="mr-2 h-4 w-4" />마감 해제</>
-                          ) : (
-                            <><XCircle className="mr-2 h-4 w-4" />마감 처리</>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
-                          <Trash2 className="mr-2 h-4 w-4" />삭제
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                 </div>
                 {selectedCall.description && (
                   <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
