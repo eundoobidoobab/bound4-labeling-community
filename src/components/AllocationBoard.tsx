@@ -74,7 +74,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newWorkDate, setNewWorkDate] = useState('');
+  
   const [newDeadline, setNewDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -102,7 +102,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   const [editCall, setEditCall] = useState<AllocationCall | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
-  const [editWorkDate, setEditWorkDate] = useState('');
+  
   const [editDeadline, setEditDeadline] = useState('');
 
   useEffect(() => {
@@ -173,21 +173,21 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleCreateCall = async () => {
-    if (!newTitle.trim() || !newWorkDate || !newDeadline || !user) return;
+    if (!newTitle.trim() || !newDeadline || !user) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').insert({
         board_id: boardId,
         title: newTitle.trim(),
         description: newDesc.trim() || null,
-        work_date: newWorkDate,
+        work_date: new Date().toISOString().slice(0, 10),
         apply_deadline: new Date(newDeadline).toISOString(),
         created_by: user.id,
       });
       if (error) throw error;
       toast({ title: '배분 공고가 등록되었습니다' });
       setCreateOpen(false);
-      setNewTitle(''); setNewDesc(''); setNewWorkDate(''); setNewDeadline('');
+      setNewTitle(''); setNewDesc(''); setNewDeadline('');
       fetchCalls();
     } catch (err: any) {
       toast({ title: '등록 실패', description: err.message, variant: 'destructive' });
@@ -197,13 +197,12 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleEditCall = async () => {
-    if (!editCall || !editTitle.trim() || !editWorkDate || !editDeadline) return;
+    if (!editCall || !editTitle.trim() || !editDeadline) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').update({
         title: editTitle.trim(),
         description: editDesc.trim() || null,
-        work_date: editWorkDate,
         apply_deadline: new Date(editDeadline).toISOString(),
       }).eq('id', editCall.id);
       if (error) throw error;
@@ -212,7 +211,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       setEditCall(null);
       fetchCalls();
       if (selectedCall?.id === editCall.id) {
-        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, work_date: editWorkDate, apply_deadline: new Date(editDeadline).toISOString() });
+        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, apply_deadline: new Date(editDeadline).toISOString() });
       }
     } catch (err: any) {
       toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
@@ -239,7 +238,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     setEditCall(call);
     setEditTitle(call.title);
     setEditDesc(call.description || '');
-    setEditWorkDate(call.work_date);
+    
     // Convert ISO deadline to datetime-local format
     const dl = new Date(call.apply_deadline);
     const local = dl.getFullYear() + '-' + String(dl.getMonth()+1).padStart(2,'0') + '-' + String(dl.getDate()).padStart(2,'0') + 'T' + String(dl.getHours()).padStart(2,'0') + ':' + String(dl.getMinutes()).padStart(2,'0');
@@ -660,17 +659,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <Label>설명 (선택)</Label>
                 <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>작업일</Label>
-                  <Input type="date" value={editWorkDate} onChange={e => setEditWorkDate(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>신청 마감</Label>
-                  <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
-                </div>
+              <div className="space-y-2">
+                <Label>신청 마감</Label>
+                <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
               </div>
-              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editWorkDate || !editDeadline}>
+              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
               </Button>
             </div>
@@ -722,10 +715,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            작업일: {call.work_date}
-                          </span>
-                          <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
                             마감: {formatDateTime(call.apply_deadline)}
                           </span>
@@ -775,17 +764,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Label>설명 (선택)</Label>
               <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="작업 내용, 요구사항 등을 설명하세요" rows={3} className="resize-none" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>작업일</Label>
-                <Input type="date" value={newWorkDate} onChange={e => setNewWorkDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>신청 마감</Label>
-                <Input type="datetime-local" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>신청 마감</Label>
+              <Input type="datetime-local" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newWorkDate || !newDeadline}>
+            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newDeadline}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 등록
             </Button>
           </div>
@@ -807,17 +790,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Label>설명 (선택)</Label>
               <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>작업일</Label>
-                <Input type="date" value={editWorkDate} onChange={e => setEditWorkDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>신청 마감</Label>
-                <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>신청 마감</Label>
+              <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editWorkDate || !editDeadline}>
+            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
             </Button>
           </div>
