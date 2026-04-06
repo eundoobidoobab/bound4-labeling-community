@@ -260,6 +260,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       call_id: applyCallId,
       worker_id: user.id,
       desired_quantity: qty,
+      worker_ref: applyWorkerRef.trim() || null,
     } as any);
     if (error) {
       toast({ title: '신청 실패', description: error.message, variant: 'destructive' });
@@ -267,6 +268,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       toast({ title: '신청 완료' });
       setApplyOpen(false);
       setApplyQuantity('');
+      setApplyWorkerRef('');
       setApplyCallId(null);
       fetchCalls();
       if (selectedCall?.id === applyCallId) fetchCallDetail(selectedCall);
