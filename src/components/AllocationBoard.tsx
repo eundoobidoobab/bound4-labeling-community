@@ -613,7 +613,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                               </div>
                             </div>
                             <div className="text-sm text-muted-foreground truncate">
-                              {(app as any).worker_ref || '-'}
+                              {app.worker_ref || '-'}
                             </div>
                             <div>
                               {isDone ? (
