@@ -666,6 +666,79 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Download rate modal */}
+      <Dialog open={!!downloadModalDoc} onOpenChange={(v) => !v && setDownloadModalDoc(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>다운로드 현황 — {downloadModalDoc?.title}</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="all" className="flex-1">전체 ({allWorkerProfiles.length})</TabsTrigger>
+              <TabsTrigger value="downloaded" className="flex-1">다운로드 ({downloadedUsers.length})</TabsTrigger>
+              <TabsTrigger value="not" className="flex-1">미다운로드 ({allWorkerProfiles.length - downloadedUsers.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="all" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {allWorkerProfiles.map(w => {
+                const dl = downloadedUsers.find(d => d.id === w.id);
+                return (
+                  <div key={w.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                        {(w.display_name || w.email || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{w.display_name || w.email}</p>
+                    </div>
+                    {dl ? (
+                      <span className="text-xs text-primary flex items-center gap-1">
+                        <Download className="h-3 w-3" /> {formatDateTime(dl.downloaded_at)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">미다운로드</span>
+                    )}
+                  </div>
+                );
+              })}
+            </TabsContent>
+            <TabsContent value="downloaded" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {downloadedUsers.map(d => (
+                <div key={d.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(d.display_name || d.email || '?').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{d.display_name || d.email}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{formatDateTime(d.downloaded_at)}</span>
+                </div>
+              ))}
+              {downloadedUsers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">아직 다운로드한 멤버가 없습니다</p>}
+            </TabsContent>
+            <TabsContent value="not" className="max-h-60 overflow-auto space-y-1 mt-2">
+              {allWorkerProfiles.filter(w => !downloadedUsers.some(d => d.id === w.id)).map(w => (
+                <div key={w.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                      {(w.display_name || w.email || '?').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{w.display_name || w.email}</p>
+                  </div>
+                </div>
+              ))}
+              {allWorkerProfiles.filter(w => !downloadedUsers.some(d => d.id === w.id)).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">모든 멤버가 다운로드했습니다</p>
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
