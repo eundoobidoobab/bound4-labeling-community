@@ -935,11 +935,13 @@ function WorkerDetailSection({
   myApp,
   myAssignment,
   onApplyClick,
+  onCancelClick,
 }: {
   call: AllocationCall;
   myApp?: Application;
   myAssignment?: Assignment;
   onApplyClick: () => void;
+  onCancelClick: () => void;
 }) {
   const now = new Date();
   const deadline = new Date(call.apply_deadline);
