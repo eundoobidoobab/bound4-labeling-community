@@ -469,7 +469,7 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path, doc.title)}>
                             <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`)}>
+                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
                             <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
                           </Button>
                         </>
@@ -477,6 +477,12 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                       {docVersions.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => setHistoryDoc(doc)}>
                           <History className="mr-1 h-3.5 w-3.5" /> 버전 이력 ({docVersions.length})
+                        </Button>
+                      )}
+                      {role === 'admin' && latest && (
+                        <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={() => openDownloadModal(doc)}>
+                          <Users className="mr-1 h-3.5 w-3.5" />
+                          다운로드율 {downloadCounts[latest.id] || 0}/{totalWorkers}
                         </Button>
                       )}
                     </div>
