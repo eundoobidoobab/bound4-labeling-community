@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
+import { Loader2, Upload, FileText, Download, Plus, History, Eye, MoreHorizontal, Pencil, Trash2, Users } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 import { useMembersData } from '@/hooks/useMembersData';
