@@ -463,14 +463,9 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {latest && (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => handlePreview(latest.file_path, doc.title)}>
-                            <Eye className="mr-1 h-3.5 w-3.5" /> 미리보기
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
-                            <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
-                          </Button>
-                        </>
+                        <Button variant="outline" size="sm" onClick={() => handleDownload(latest.file_path, `${doc.title}_v${latest.version_number}`, latest.id)}>
+                          <Download className="mr-1 h-3.5 w-3.5" /> 다운로드
+                        </Button>
                       )}
                       {docVersions.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => setHistoryDoc(doc)}>
