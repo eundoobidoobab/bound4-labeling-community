@@ -97,6 +97,14 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   // Worker's own applications
   const [myApplications, setMyApplications] = useState<Record<string, Application>>({});
 
+  // Edit call dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCall, setEditCall] = useState<AllocationCall | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editWorkDate, setEditWorkDate] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+
   useEffect(() => {
     fetchCalls();
   }, [boardId]);
