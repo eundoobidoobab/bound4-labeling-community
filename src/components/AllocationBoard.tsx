@@ -588,7 +588,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                         return (
                           <div
                             key={app.id}
-                            className={`grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${
+                            className={`grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${
                               isChecked ? 'bg-primary/5' : 'hover:bg-muted/30'
                             } ${isDone ? 'opacity-60' : ''}`}
                           >
@@ -609,8 +609,10 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                                 <p className="text-sm font-medium text-foreground truncate">
                                   {worker?.display_name || worker?.email || '알 수 없음'}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate">{worker?.email}</p>
                               </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {(app as any).worker_ref || '-'}
                             </div>
                             <div>
                               {isDone ? (
