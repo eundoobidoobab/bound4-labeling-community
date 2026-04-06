@@ -318,15 +318,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     }
   };
 
-  const handlePreview = async (filePath: string, title?: string) => {
-    const { data } = await supabase.storage.from('guides').createSignedUrl(filePath, 300);
-    if (data?.signedUrl) {
-      setPreviewUrl(data.signedUrl);
-      setPreviewTitle(title || '미리보기');
-    } else {
-      toast({ title: '미리보기 실패', variant: 'destructive' });
-    }
-  };
 
   const handleUpdateDocTitle = async (docId: string) => {
     if (!editTitle.trim()) return;
