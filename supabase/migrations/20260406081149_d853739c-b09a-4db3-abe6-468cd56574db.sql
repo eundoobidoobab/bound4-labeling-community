@@ -1,0 +1,1 @@
+ALTER TABLE public.allocation_calls ALTER COLUMN apply_deadline DROP NOT NULL;

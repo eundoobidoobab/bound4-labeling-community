@@ -175,7 +175,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleCreateCall = async () => {
-    if (!newTitle.trim() || !newDeadline || !user) return;
+    if (!newTitle.trim() || !user) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').insert({
@@ -183,9 +183,9 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         title: newTitle.trim(),
         description: newDesc.trim() || null,
         work_date: new Date().toISOString().slice(0, 10),
-        apply_deadline: new Date(newDeadline).toISOString(),
+        apply_deadline: newDeadline ? new Date(newDeadline).toISOString() : null,
         created_by: user.id,
-      });
+      } as any);
       if (error) throw error;
       toast({ title: '배분 공고가 등록되었습니다' });
       setCreateOpen(false);
@@ -199,21 +199,21 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleEditCall = async () => {
-    if (!editCall || !editTitle.trim() || !editDeadline) return;
+    if (!editCall || !editTitle.trim()) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').update({
         title: editTitle.trim(),
         description: editDesc.trim() || null,
-        apply_deadline: new Date(editDeadline).toISOString(),
-      }).eq('id', editCall.id);
+        apply_deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
+      } as any).eq('id', editCall.id);
       if (error) throw error;
       toast({ title: '공고가 수정되었습니다' });
       setEditOpen(false);
       setEditCall(null);
       fetchCalls();
       if (selectedCall?.id === editCall.id) {
-        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, apply_deadline: new Date(editDeadline).toISOString() });
+        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, apply_deadline: editDeadline ? new Date(editDeadline).toISOString() : null as any });
       }
     } catch (err: any) {
       toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
@@ -252,7 +252,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     if (!user || !applyCallId) return;
     // Frontend deadline check
     const call = calls.find(c => c.id === applyCallId);
-    if (call && new Date() > new Date(call.apply_deadline)) {
+    if (call?.apply_deadline && new Date() > new Date(call.apply_deadline)) {
       toast({ title: '신청 마감', description: '신청 마감일이 지났습니다.', variant: 'destructive' });
       return;
     }
@@ -386,6 +386,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const getCallStatus = (call: AllocationCall) => {
+    if (!call.apply_deadline) return { label: '신청 중', variant: 'default' as const };
     const now = new Date();
     const deadline = new Date(call.apply_deadline);
     if (now < deadline) return { label: '신청 중', variant: 'default' as const };
@@ -497,10 +498,12 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
                 )}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    신청 마감: {formatDateTime(selectedCall.apply_deadline)}
-                  </span>
+                  {selectedCall.apply_deadline && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      신청 마감: {formatDateTime(selectedCall.apply_deadline)}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />
                     {applications.length}명 신청
@@ -676,10 +679,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
               </div>
               <div className="space-y-2">
-                <Label>신청 마감</Label>
+                <Label>신청 마감 (선택)</Label>
                 <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+                <p className="text-xs text-muted-foreground">설정하면 마감일이 지나면 자동으로 신청이 마감됩니다</p>
               </div>
-              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
+              <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim()}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
               </Button>
             </div>
@@ -730,10 +734,12 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                           )}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            마감: {formatDateTime(call.apply_deadline)}
-                          </span>
+                          {call.apply_deadline && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              마감: {formatDateTime(call.apply_deadline)}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -781,10 +787,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="작업 내용, 요구사항 등을 설명하세요" rows={3} className="resize-none" />
             </div>
             <div className="space-y-2">
-              <Label>신청 마감</Label>
+              <Label>신청 마감 (선택)</Label>
               <Input type="datetime-local" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} />
+              <p className="text-xs text-muted-foreground">설정하면 마감일이 지나면 자동으로 신청이 마감됩니다</p>
             </div>
-            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newDeadline}>
+            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim()}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 등록
             </Button>
           </div>
@@ -807,10 +814,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
             </div>
             <div className="space-y-2">
-              <Label>신청 마감</Label>
+              <Label>신청 마감 (선택)</Label>
               <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
+              <p className="text-xs text-muted-foreground">설정하면 마감일이 지나면 자동으로 신청이 마감됩니다</p>
             </div>
-            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
+            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim()}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
             </Button>
           </div>
