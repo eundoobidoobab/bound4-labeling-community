@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
+import { getProjectMemberIds, getProjectAdminIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,6 +84,19 @@ export default function BoardPage() {
     if (error) { toast({ title: '생성 실패', description: error.message, variant: 'destructive' }); return; }
     if (attachmentPaths.length > 0 && inserted) {
       await supabase.from('post_attachments').insert(attachmentPaths.map(a => ({ ...a, post_id: inserted.id })));
+    }
+    // 관리자에게 알림 전송
+    const adminIds = await getProjectAdminIds(project.id, [user.id]);
+    if (adminIds.length > 0) {
+      const boardName = board?.name || '게시판';
+      await sendNotifications({
+        userIds: adminIds,
+        type: 'POST_CREATED',
+        title: `📝 [${boardName}] ${title}`,
+        body: body.length > 80 ? body.slice(0, 80) + '…' : body,
+        projectId: project.id,
+        deepLink: `/projects/${project.id}/boards/${boardId}`,
+      });
     }
     toast({ title: '게시글이 등록되었습니다' });
     invalidateBoard();

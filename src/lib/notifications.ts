@@ -18,11 +18,20 @@ export async function getProjectMemberIds(projectId: string, excludeIds: string[
 }
 
 /**
+ * Get only admin IDs of a project, optionally excluding some user IDs.
+ */
+export async function getProjectAdminIds(projectId: string, excludeIds: string[] = []): Promise<string[]> {
+  const { data } = await supabase.from('project_admins').select('admin_id').eq('project_id', projectId);
+  const ids = (data || []).map((a: any) => a.admin_id).filter((id: string) => !excludeIds.includes(id));
+  return ids;
+}
+
+/**
  * Send in-app notifications to multiple users.
  */
 export async function sendNotifications(params: {
   userIds: string[];
-  type: 'ALLOCATION_DISTRIBUTED' | 'DM_NEW_MESSAGE' | 'NOTICE_PUBLISHED' | 'GUIDE_UPDATED';
+  type: 'ALLOCATION_DISTRIBUTED' | 'DM_NEW_MESSAGE' | 'NOTICE_PUBLISHED' | 'GUIDE_UPDATED' | 'POST_CREATED';
   title: string;
   body?: string;
   projectId: string;
