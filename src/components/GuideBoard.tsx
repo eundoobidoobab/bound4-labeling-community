@@ -617,9 +617,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(ver.file_path, `${historyDoc?.title} v${ver.version_number}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(ver.file_path, `v${ver.version_number}`, ver.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
