@@ -31,7 +31,7 @@ export async function getProjectAdminIds(projectId: string, excludeIds: string[]
  */
 export async function sendNotifications(params: {
   userIds: string[];
-  type: 'ALLOCATION_DISTRIBUTED' | 'DM_NEW_MESSAGE' | 'NOTICE_PUBLISHED' | 'GUIDE_UPDATED';
+  type: 'ALLOCATION_DISTRIBUTED' | 'DM_NEW_MESSAGE' | 'NOTICE_PUBLISHED' | 'GUIDE_UPDATED' | 'POST_CREATED';
   title: string;
   body?: string;
   projectId: string;
