@@ -203,7 +203,6 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       const { error } = await supabase.from('allocation_calls').update({
         title: editTitle.trim(),
         description: editDesc.trim() || null,
-        work_date: editWorkDate,
         apply_deadline: new Date(editDeadline).toISOString(),
       }).eq('id', editCall.id);
       if (error) throw error;
