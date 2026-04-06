@@ -245,6 +245,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     const local = dl.getFullYear() + '-' + String(dl.getMonth()+1).padStart(2,'0') + '-' + String(dl.getDate()).padStart(2,'0') + 'T' + String(dl.getHours()).padStart(2,'0') + ':' + String(dl.getMinutes()).padStart(2,'0');
     setEditDeadline(local);
     setEditOpen(true);
+  };
 
   const handleApply = async () => {
     if (!user || !applyCallId) return;
