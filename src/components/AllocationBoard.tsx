@@ -196,6 +196,56 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     }
   };
 
+  const handleEditCall = async () => {
+    if (!editCall || !editTitle.trim() || !editWorkDate || !editDeadline) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('allocation_calls').update({
+        title: editTitle.trim(),
+        description: editDesc.trim() || null,
+        work_date: editWorkDate,
+        apply_deadline: new Date(editDeadline).toISOString(),
+      }).eq('id', editCall.id);
+      if (error) throw error;
+      toast({ title: '공고가 수정되었습니다' });
+      setEditOpen(false);
+      setEditCall(null);
+      fetchCalls();
+      if (selectedCall?.id === editCall.id) {
+        setSelectedCall({ ...selectedCall, title: editTitle.trim(), description: editDesc.trim() || null, work_date: editWorkDate, apply_deadline: new Date(editDeadline).toISOString() });
+      }
+    } catch (err: any) {
+      toast({ title: '수정 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCall = async (call: AllocationCall) => {
+    if (!confirm(`"${call.title}" 공고를 삭제하시겠습니까?`)) return;
+    try {
+      const { error } = await supabase.from('allocation_calls').delete().eq('id', call.id);
+      if (error) throw error;
+      toast({ title: '공고가 삭제되었습니다' });
+      if (selectedCall?.id === call.id) setSelectedCall(null);
+      fetchCalls();
+    } catch (err: any) {
+      toast({ title: '삭제 실패', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const openEditDialog = (call: AllocationCall, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditCall(call);
+    setEditTitle(call.title);
+    setEditDesc(call.description || '');
+    setEditWorkDate(call.work_date);
+    // Convert ISO deadline to datetime-local format
+    const dl = new Date(call.apply_deadline);
+    const local = dl.getFullYear() + '-' + String(dl.getMonth()+1).padStart(2,'0') + '-' + String(dl.getDate()).padStart(2,'0') + 'T' + String(dl.getHours()).padStart(2,'0') + ':' + String(dl.getMinutes()).padStart(2,'0');
+    setEditDeadline(local);
+    setEditOpen(true);
+
   const handleApply = async () => {
     if (!user || !applyCallId) return;
     // Frontend deadline check
