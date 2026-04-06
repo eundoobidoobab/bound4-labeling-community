@@ -143,9 +143,18 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     setLoading(false);
   };
 
-  const handleCreateDocument = async () => {
-    if (!newTitle.trim() || !newFile || !user) return;
-    setSubmitting(true);
+  const openUploadDialog = (mode: 'new' | 'version', doc?: GuideDocument) => {
+    setUploadMode(mode);
+    setUploadTargetDoc(doc || null);
+    setNewTitle(mode === 'version' && doc ? doc.title : '');
+    setNewFile(null);
+    setNewSummary('');
+    setUploadOpen(true);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!newFile || !user) return;
+    setSubmitting('uploading');
 
     try {
       const ext = newFile.name.split('.').pop();
@@ -153,110 +162,51 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, newFile);
       if (uploadError) throw uploadError;
 
-      const { data: doc, error: docError } = await supabase
-        .from('guide_documents')
-        .insert({ board_id: boardId, title: newTitle.trim() })
-        .select()
-        .single();
-      if (docError) throw docError;
+      if (uploadMode === 'new') {
+        if (!newTitle.trim()) return;
+        const { data: doc, error: docError } = await supabase
+          .from('guide_documents')
+          .insert({ board_id: boardId, title: newTitle.trim() })
+          .select()
+          .single();
+        if (docError) throw docError;
 
-      const { data: version, error: verError } = await supabase
-        .from('guide_versions')
-        .insert({
-          document_id: doc.id,
-          version_number: 1,
-          file_path: filePath,
-          diff_summary: newSummary.trim() || null,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-      if (verError) throw verError;
+        const { data: version, error: verError } = await supabase
+          .from('guide_versions')
+          .insert({ document_id: doc.id, version_number: 1, file_path: filePath, diff_summary: newSummary.trim() || null, created_by: user.id })
+          .select().single();
+        if (verError) throw verError;
 
-      await supabase
-        .from('project_latest_guide')
-        .upsert({
-          project_id: projectId,
-          guide_version_id: version.id,
-        }, { onConflict: 'project_id' });
+        await supabase.from('project_latest_guide').upsert({ project_id: projectId, guide_version_id: version.id }, { onConflict: 'project_id' });
 
-      // Notify all project members except the creator
-      const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({
-        userIds: memberIds,
-        type: 'GUIDE_UPDATED',
-        title: `📄 새 가이드: ${newTitle.trim()}`,
-        body: newSummary.trim() || null,
-        projectId,
-        deepLink: `/projects/${projectId}/boards/${boardId}`,
-      });
+        const memberIds = await getProjectMemberIds(projectId, [user.id]);
+        await sendNotifications({ userIds: memberIds, type: 'GUIDE_UPDATED', title: `📄 새 가이드: ${newTitle.trim()}`, body: newSummary.trim() || null, projectId, deepLink: `/projects/${projectId}/boards/${boardId}` });
+        toast({ title: '가이드 문서가 등록되었습니다' });
+      } else {
+        // Version mode
+        if (!uploadTargetDoc) return;
+        const currentVersions = versions[uploadTargetDoc.id] || [];
+        const nextVersion = (currentVersions[0]?.version_number || 0) + 1;
 
-      toast({ title: '가이드 문서가 등록되었습니다' });
-      setCreateOpen(false);
-      setNewTitle('');
-      setNewFile(null);
-      setNewSummary('');
+        const { data: version, error: verError } = await supabase
+          .from('guide_versions')
+          .insert({ document_id: uploadTargetDoc.id, version_number: nextVersion, file_path: filePath, diff_summary: newSummary.trim() || null, created_by: user.id })
+          .select().single();
+        if (verError) throw verError;
+
+        await supabase.from('project_latest_guide').upsert({ project_id: projectId, guide_version_id: version.id }, { onConflict: 'project_id' });
+
+        const memberIds = await getProjectMemberIds(projectId, [user.id]);
+        await sendNotifications({ userIds: memberIds, type: 'GUIDE_UPDATED', title: `📄 ${uploadTargetDoc.title} v${nextVersion}`, body: newSummary.trim() || '새 버전이 등록되었습니다.', projectId, deepLink: `/projects/${projectId}/boards/${boardId}` });
+        toast({ title: `v${nextVersion}이 등록되었습니다` });
+      }
+
+      setUploadOpen(false);
       fetchData();
     } catch (err: any) {
       toast({ title: '등록 실패', description: err.message, variant: 'destructive' });
     } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleNewVersion = async () => {
-    if (!versionFile || !versionDialogDoc || !user) return;
-    setSubmitting(true);
-
-    try {
-      const currentVersions = versions[versionDialogDoc.id] || [];
-      const nextVersion = (currentVersions[0]?.version_number || 0) + 1;
-
-      const ext = versionFile.name.split('.').pop();
-      const filePath = `${projectId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, versionFile);
-      if (uploadError) throw uploadError;
-
-      const { data: version, error: verError } = await supabase
-        .from('guide_versions')
-        .insert({
-          document_id: versionDialogDoc.id,
-          version_number: nextVersion,
-          file_path: filePath,
-          diff_summary: versionSummary.trim() || null,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-      if (verError) throw verError;
-
-      await supabase
-        .from('project_latest_guide')
-        .upsert({
-          project_id: projectId,
-          guide_version_id: version.id,
-        }, { onConflict: 'project_id' });
-
-      // Notify all project members except the creator
-      const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({
-        userIds: memberIds,
-        type: 'GUIDE_UPDATED',
-        title: `📄 ${versionDialogDoc.title} v${nextVersion}`,
-        body: versionSummary.trim() || '새 버전이 등록되었습니다.',
-        projectId,
-        deepLink: `/projects/${projectId}/boards/${boardId}`,
-      });
-
-      toast({ title: `v${nextVersion}이 등록되었습니다` });
-      setVersionDialogDoc(null);
-      setVersionFile(null);
-      setVersionSummary('');
-      fetchData();
-    } catch (err: any) {
-      toast({ title: '버전 등록 실패', description: err.message, variant: 'destructive' });
-    } finally {
-      setSubmitting(false);
+      setSubmitting('');
     }
   };
 
