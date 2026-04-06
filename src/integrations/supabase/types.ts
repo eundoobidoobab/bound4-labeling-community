@@ -22,6 +22,7 @@ export type Database = {
           id: string
           status: Database["public"]["Enums"]["application_status"]
           worker_id: string
+          worker_ref: string | null
         }
         Insert: {
           call_id: string
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           status?: Database["public"]["Enums"]["application_status"]
           worker_id: string
+          worker_ref?: string | null
         }
         Update: {
           call_id?: string
@@ -38,6 +40,7 @@ export type Database = {
           id?: string
           status?: Database["public"]["Enums"]["application_status"]
           worker_id?: string
+          worker_ref?: string | null
         }
         Relationships: [
           {

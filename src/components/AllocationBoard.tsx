@@ -37,6 +37,7 @@ interface Application {
   status: 'APPLIED' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
   created_at: string;
   desired_quantity: number | null;
+  worker_ref: string | null;
 }
 
 interface Assignment {
@@ -92,6 +93,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   // Worker apply dialog
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyQuantity, setApplyQuantity] = useState('');
+  const [applyWorkerRef, setApplyWorkerRef] = useState('');
   const [applyCallId, setApplyCallId] = useState<string | null>(null);
 
   // Worker's own applications
@@ -259,6 +261,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       call_id: applyCallId,
       worker_id: user.id,
       desired_quantity: qty,
+      worker_ref: applyWorkerRef.trim() || null,
     } as any);
     if (error) {
       toast({ title: '신청 실패', description: error.message, variant: 'destructive' });
@@ -266,6 +269,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       toast({ title: '신청 완료' });
       setApplyOpen(false);
       setApplyQuantity('');
+      setApplyWorkerRef('');
       setApplyCallId(null);
       fetchCalls();
       if (selectedCall?.id === applyCallId) fetchCallDetail(selectedCall);
@@ -407,12 +411,20 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   // Shared dialogs (rendered regardless of view)
   const applyDialog = (
-    <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyCallId(null); } }}>
+    <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyWorkerRef(''); setApplyCallId(null); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>작업 신청</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>작업자 ID</Label>
+            <Input
+              value={applyWorkerRef}
+              onChange={e => setApplyWorkerRef(e.target.value)}
+              placeholder="본인의 작업자 ID를 입력하세요"
+            />
+          </div>
           <div className="space-y-2">
             <Label>희망 수량 (선택)</Label>
             <Input
@@ -546,7 +558,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   ) : (
                     <div className="border border-border rounded-lg overflow-hidden">
                       {/* Table header */}
-                      <div className="grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
+                      <div className="grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
                         <div>
                           <Checkbox
                             checked={checkedIds.size === applications.length && applications.length > 0}
@@ -554,6 +566,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                           />
                         </div>
                         <div>작업자</div>
+                        <div>작업자 ID</div>
                         <div>희망 수량</div>
                         <div>신청 시각</div>
                         <div className="text-right">상태</div>
@@ -576,7 +589,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                         return (
                           <div
                             key={app.id}
-                            className={`grid grid-cols-[40px_1fr_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${
+                            className={`grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${
                               isChecked ? 'bg-primary/5' : 'hover:bg-muted/30'
                             } ${isDone ? 'opacity-60' : ''}`}
                           >
@@ -597,8 +610,10 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                                 <p className="text-sm font-medium text-foreground truncate">
                                   {worker?.display_name || worker?.email || '알 수 없음'}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate">{worker?.email}</p>
                               </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {app.worker_ref || '-'}
                             </div>
                             <div>
                               {isDone ? (
