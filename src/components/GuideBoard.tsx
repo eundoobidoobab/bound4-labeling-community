@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, X, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Upload, FileText, Download, CheckCircle2, Plus, History, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 
@@ -51,21 +51,22 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [acknowledgements, setAcknowledgements] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
+
+  // Unified upload dialog
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'new' | 'version'>('new');
+  const [uploadTargetDoc, setUploadTargetDoc] = useState<GuideDocument | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newFile, setNewFile] = useState<File | null>(null);
   const [newSummary, setNewSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [versionDialogDoc, setVersionDialogDoc] = useState<GuideDocument | null>(null);
-  const [versionFile, setVersionFile] = useState<File | null>(null);
-  const [versionSummary, setVersionSummary] = useState('');
+
   const [historyDoc, setHistoryDoc] = useState<GuideDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const versionFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -98,7 +99,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       });
       setVersions(versionMap);
 
-      // Fetch profiles
       const authorIds = [...new Set((vers || []).map((v: any) => v.created_by))];
       if (authorIds.length > 0) {
         const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', authorIds);
@@ -107,7 +107,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         setProfiles(profMap);
       }
 
-      // Fetch user's acknowledgements
       if (user) {
         const latestVersionIds = docList.map(d => versionMap[d.id]?.[0]?.id).filter(Boolean);
         if (latestVersionIds.length > 0) {
@@ -120,7 +119,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           const existingAcks = new Set((acks || []).map((a: any) => a.guide_version_id));
           setAcknowledgements(existingAcks);
 
-          // Auto-acknowledge: mark unacknowledged latest versions as read
           const unacked = latestVersionIds.filter(id => !existingAcks.has(id));
           if (unacked.length > 0) {
             const inserts = unacked.map(vId => ({
@@ -144,8 +142,17 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
     setLoading(false);
   };
 
-  const handleCreateDocument = async () => {
-    if (!newTitle.trim() || !newFile || !user) return;
+  const openUploadDialog = (mode: 'new' | 'version', doc?: GuideDocument) => {
+    setUploadMode(mode);
+    setUploadTargetDoc(doc || null);
+    setNewTitle('');
+    setNewFile(null);
+    setNewSummary('');
+    setUploadOpen(true);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!newFile || !user) return;
     setSubmitting(true);
 
     try {
@@ -154,108 +161,48 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, newFile);
       if (uploadError) throw uploadError;
 
-      const { data: doc, error: docError } = await supabase
-        .from('guide_documents')
-        .insert({ board_id: boardId, title: newTitle.trim() })
-        .select()
-        .single();
-      if (docError) throw docError;
+      if (uploadMode === 'new') {
+        if (!newTitle.trim()) return;
+        const { data: doc, error: docError } = await supabase
+          .from('guide_documents')
+          .insert({ board_id: boardId, title: newTitle.trim() })
+          .select()
+          .single();
+        if (docError) throw docError;
 
-      const { data: version, error: verError } = await supabase
-        .from('guide_versions')
-        .insert({
-          document_id: doc.id,
-          version_number: 1,
-          file_path: filePath,
-          diff_summary: newSummary.trim() || null,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-      if (verError) throw verError;
+        const { data: version, error: verError } = await supabase
+          .from('guide_versions')
+          .insert({ document_id: doc.id, version_number: 1, file_path: filePath, diff_summary: newSummary.trim() || null, created_by: user.id })
+          .select().single();
+        if (verError) throw verError;
 
-      await supabase
-        .from('project_latest_guide')
-        .upsert({
-          project_id: projectId,
-          guide_version_id: version.id,
-        }, { onConflict: 'project_id' });
+        await supabase.from('project_latest_guide').upsert({ project_id: projectId, guide_version_id: version.id }, { onConflict: 'project_id' });
 
-      // Notify all project members except the creator
-      const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({
-        userIds: memberIds,
-        type: 'GUIDE_UPDATED',
-        title: `📄 새 가이드: ${newTitle.trim()}`,
-        body: newSummary.trim() || null,
-        projectId,
-        deepLink: `/projects/${projectId}/boards/${boardId}`,
-      });
+        const memberIds = await getProjectMemberIds(projectId, [user.id]);
+        await sendNotifications({ userIds: memberIds, type: 'GUIDE_UPDATED', title: `📄 새 가이드: ${newTitle.trim()}`, body: newSummary.trim() || null, projectId, deepLink: `/projects/${projectId}/boards/${boardId}` });
+        toast({ title: '가이드 문서가 등록되었습니다' });
+      } else {
+        if (!uploadTargetDoc) return;
+        const currentVersions = versions[uploadTargetDoc.id] || [];
+        const nextVersion = (currentVersions[0]?.version_number || 0) + 1;
 
-      toast({ title: '가이드 문서가 등록되었습니다' });
-      setCreateOpen(false);
-      setNewTitle('');
-      setNewFile(null);
-      setNewSummary('');
+        const { data: version, error: verError } = await supabase
+          .from('guide_versions')
+          .insert({ document_id: uploadTargetDoc.id, version_number: nextVersion, file_path: filePath, diff_summary: newSummary.trim() || null, created_by: user.id })
+          .select().single();
+        if (verError) throw verError;
+
+        await supabase.from('project_latest_guide').upsert({ project_id: projectId, guide_version_id: version.id }, { onConflict: 'project_id' });
+
+        const memberIds = await getProjectMemberIds(projectId, [user.id]);
+        await sendNotifications({ userIds: memberIds, type: 'GUIDE_UPDATED', title: `📄 ${uploadTargetDoc.title} v${nextVersion}`, body: newSummary.trim() || '새 버전이 등록되었습니다.', projectId, deepLink: `/projects/${projectId}/boards/${boardId}` });
+        toast({ title: `v${nextVersion}이 등록되었습니다` });
+      }
+
+      setUploadOpen(false);
       fetchData();
     } catch (err: any) {
       toast({ title: '등록 실패', description: err.message, variant: 'destructive' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleNewVersion = async () => {
-    if (!versionFile || !versionDialogDoc || !user) return;
-    setSubmitting(true);
-
-    try {
-      const currentVersions = versions[versionDialogDoc.id] || [];
-      const nextVersion = (currentVersions[0]?.version_number || 0) + 1;
-
-      const ext = versionFile.name.split('.').pop();
-      const filePath = `${projectId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('guides').upload(filePath, versionFile);
-      if (uploadError) throw uploadError;
-
-      const { data: version, error: verError } = await supabase
-        .from('guide_versions')
-        .insert({
-          document_id: versionDialogDoc.id,
-          version_number: nextVersion,
-          file_path: filePath,
-          diff_summary: versionSummary.trim() || null,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-      if (verError) throw verError;
-
-      await supabase
-        .from('project_latest_guide')
-        .upsert({
-          project_id: projectId,
-          guide_version_id: version.id,
-        }, { onConflict: 'project_id' });
-
-      // Notify all project members except the creator
-      const memberIds = await getProjectMemberIds(projectId, [user.id]);
-      await sendNotifications({
-        userIds: memberIds,
-        type: 'GUIDE_UPDATED',
-        title: `📄 ${versionDialogDoc.title} v${nextVersion}`,
-        body: versionSummary.trim() || '새 버전이 등록되었습니다.',
-        projectId,
-        deepLink: `/projects/${projectId}/boards/${boardId}`,
-      });
-
-      toast({ title: `v${nextVersion}이 등록되었습니다` });
-      setVersionDialogDoc(null);
-      setVersionFile(null);
-      setVersionSummary('');
-      fetchData();
-    } catch (err: any) {
-      toast({ title: '버전 등록 실패', description: err.message, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -307,15 +254,12 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const handleDeleteDocument = async (doc: GuideDocument) => {
     if (!confirm(`"${doc.title}" 문서를 삭제하시겠습니까? 모든 버전이 함께 삭제됩니다.`)) return;
     try {
-      // Delete storage files
       const docVersions = versions[doc.id] || [];
       if (docVersions.length > 0) {
         const filePaths = docVersions.map(v => v.file_path);
         await supabase.storage.from('guides').remove(filePaths);
-        // Delete versions first (FK constraint)
         await supabase.from('guide_versions').delete().eq('document_id', doc.id);
       }
-      // Delete project_latest_guide if it references this doc's versions
       const versionIds = docVersions.map(v => v.id);
       if (versionIds.length > 0) {
         await supabase.from('project_latest_guide').delete().in('guide_version_id', versionIds);
@@ -339,16 +283,14 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
 
   return (
     <div>
-      {/* Admin: Create new guide */}
       {role === 'admin' && (
         <div className="mb-6">
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> 새 가이드 문서
+          <Button onClick={() => openUploadDialog('new')}>
+            <Plus className="mr-2 h-4 w-4" /> 가이드 업로드
           </Button>
         </div>
       )}
 
-      {/* Guide documents list */}
       {documents.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
@@ -417,6 +359,9 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openUploadDialog('version', doc)}>
+                                <Upload className="mr-2 h-4 w-4" />새 버전 업로드
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { setEditingDocId(doc.id); setEditTitle(doc.title); }}>
                                 <Pencil className="mr-2 h-4 w-4" />제목 수정
                               </DropdownMenuItem>
@@ -446,11 +391,6 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <History className="mr-1 h-3.5 w-3.5" /> 버전 이력 ({docVersions.length})
                         </Button>
                       )}
-                      {role === 'admin' && (
-                        <Button variant="ghost" size="sm" onClick={() => { setVersionDialogDoc(doc); setVersionFile(null); setVersionSummary(''); }}>
-                          <Upload className="mr-1 h-3.5 w-3.5" /> 새 버전 업로드
-                        </Button>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -460,17 +400,81 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         </div>
       )}
 
-      {/* Create document dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      {/* Unified upload dialog */}
+      <Dialog open={uploadOpen} onOpenChange={(v) => { if (!v) setUploadOpen(false); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>새 가이드 문서 등록</DialogTitle>
+            <DialogTitle>
+              {uploadMode === 'version' && uploadTargetDoc
+                ? `새 버전 업로드 — ${uploadTargetDoc.title}`
+                : '가이드 업로드'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>문서 제목</Label>
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="예: 라벨링 작업 가이드" />
-            </div>
+            {/* Mode tabs */}
+            {documents.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  variant={uploadMode === 'new' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => { setUploadMode('new'); setUploadTargetDoc(null); }}
+                >
+                  새 문서
+                </Button>
+                <Button
+                  variant={uploadMode === 'version' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => { setUploadMode('version'); setUploadTargetDoc(null); }}
+                >
+                  기존 문서에 버전 추가
+                </Button>
+              </div>
+            )}
+
+            {/* Select existing document */}
+            {uploadMode === 'version' && !uploadTargetDoc && (
+              <div className="space-y-2">
+                <Label>대상 문서 선택</Label>
+                <div className="space-y-1 max-h-40 overflow-auto">
+                  {documents.map(d => (
+                    <button
+                      key={d.id}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-muted text-sm transition-colors flex items-center gap-2"
+                      onClick={() => setUploadTargetDoc(d)}
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{d.title}</span>
+                      <Badge variant="outline" className="text-xs ml-auto shrink-0">
+                        v{(versions[d.id]?.[0]?.version_number || 0)}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected doc indicator */}
+            {uploadMode === 'version' && uploadTargetDoc && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <FileText className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-sm font-medium truncate">{uploadTargetDoc.title}</span>
+                <Badge variant="outline" className="text-xs ml-auto">
+                  → v{((versions[uploadTargetDoc.id]?.[0]?.version_number || 0) + 1)}
+                </Badge>
+              </div>
+            )}
+
+            {/* Title (new doc only) */}
+            {uploadMode === 'new' && (
+              <div className="space-y-2">
+                <Label>문서 제목</Label>
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="예: 라벨링 작업 가이드" />
+              </div>
+            )}
+
+            {/* File upload */}
             <div className="space-y-2">
               <Label>파일 업로드</Label>
               <div
@@ -493,50 +497,26 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
               </div>
               <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => setNewFile(e.target.files?.[0] || null)} />
             </div>
+
+            {/* Summary */}
             <div className="space-y-2">
               <Label>변경 요약 (선택)</Label>
-              <Textarea value={newSummary} onChange={(e) => setNewSummary(e.target.value)} placeholder="이번 가이드의 주요 내용을 간략히 설명하세요" rows={2} className="resize-none" />
+              <Textarea
+                value={newSummary}
+                onChange={(e) => setNewSummary(e.target.value)}
+                placeholder={uploadMode === 'new' ? '주요 내용을 간략히 설명하세요' : '이전 버전 대비 변경 사항을 설명하세요'}
+                rows={2}
+                className="resize-none"
+              />
             </div>
-            <Button className="w-full" onClick={handleCreateDocument} disabled={submitting || !newTitle.trim() || !newFile}>
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 등록
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* New version dialog */}
-      <Dialog open={!!versionDialogDoc} onOpenChange={(v) => !v && setVersionDialogDoc(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>새 버전 업로드 - {versionDialogDoc?.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>파일 업로드</Label>
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => versionFileRef.current?.click()}
-              >
-                {versionFile ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <span className="text-sm text-foreground">{versionFile.name}</span>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">클릭하여 새 파일을 선택하세요</p>
-                  </>
-                )}
-              </div>
-              <input ref={versionFileRef} type="file" className="hidden" onChange={(e) => setVersionFile(e.target.files?.[0] || null)} />
-            </div>
-            <div className="space-y-2">
-              <Label>변경 요약</Label>
-              <Textarea value={versionSummary} onChange={(e) => setVersionSummary(e.target.value)} placeholder="이전 버전 대비 변경 사항을 설명하세요" rows={2} className="resize-none" />
-            </div>
-            <Button className="w-full" onClick={handleNewVersion} disabled={submitting || !versionFile}>
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 업로드
+            <Button
+              className="w-full"
+              onClick={handleUploadSubmit}
+              disabled={submitting || !newFile || (uploadMode === 'new' ? !newTitle.trim() : !uploadTargetDoc)}
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {uploadMode === 'new' ? '등록' : '업로드'}
             </Button>
           </div>
         </DialogContent>
