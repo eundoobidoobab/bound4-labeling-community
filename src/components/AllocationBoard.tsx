@@ -99,6 +99,8 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   // Worker's own applications
   const [myApplications, setMyApplications] = useState<Record<string, Application>>({});
+  // Application counts per call (for list view)
+  const [applicationCounts, setApplicationCounts] = useState<Record<string, number>>({});
 
   // Edit call dialog
   const [editOpen, setEditOpen] = useState(false);
