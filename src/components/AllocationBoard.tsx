@@ -257,12 +257,13 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       return;
     }
     const qty = applyQuantity.trim() ? parseInt(applyQuantity) : null;
-    const { error } = await supabase.from('allocation_applications').insert({
+    const { error } = await supabase.from('allocation_applications').upsert({
       call_id: applyCallId,
       worker_id: user.id,
       desired_quantity: qty,
       worker_ref: applyWorkerRef.trim() || null,
-    } as any);
+      status: 'APPLIED',
+    } as any, { onConflict: 'call_id,worker_id' });
     if (error) {
       toast({ title: '신청 실패', description: error.message, variant: 'destructive' });
     } else {
