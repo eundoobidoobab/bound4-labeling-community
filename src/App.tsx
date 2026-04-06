@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,18 +8,19 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import LoginPage from "./pages/LoginPage";
-import ProjectsPage from "./pages/ProjectsPage";
-import ProjectLayout from "./components/ProjectLayout";
-import ProjectDetailPage from "./pages/ProjectDetailPage";
-import BoardPage from "./pages/BoardPage";
-import MembersPage from "./pages/MembersPage";
-import DMPage from "./pages/DMPage";
-import NotificationsPage from "./pages/NotificationsPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ProfilePage from "./pages/ProfilePage";
-import ProjectSettingsPage from "./pages/ProjectSettingsPage";
-import NotFound from "./pages/NotFound";
+
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
+const ProjectLayout = lazy(() => import("./components/ProjectLayout"));
+const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
+const BoardPage = lazy(() => import("./pages/BoardPage"));
+const MembersPage = lazy(() => import("./pages/MembersPage"));
+const DMPage = lazy(() => import("./pages/DMPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ProjectSettingsPage = lazy(() => import("./pages/ProjectSettingsPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
