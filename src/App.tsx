@@ -57,27 +57,27 @@ const App = () => (
         <BrowserRouter>
           <OfflineBanner />
           <ErrorBoundary>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-              <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
+                <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
-              {/* Project routes with sidebar layout */}
-              <Route path="/projects/:id" element={<ProtectedRoute><ProjectLayout /></ProtectedRoute>}>
-                <Route index element={<ErrorBoundary><ProjectDetailPage /></ErrorBoundary>} />
-                <Route path="boards/:boardId" element={<ErrorBoundary><BoardPage /></ErrorBoundary>} />
-                <Route path="dm" element={<ErrorBoundary><DMPage /></ErrorBoundary>} />
-                <Route path="members" element={<ErrorBoundary><MembersPage /></ErrorBoundary>} />
-                <Route path="settings" element={<ErrorBoundary><ProjectSettingsPage /></ErrorBoundary>} />
-                <Route path="admin/allocation" element={<div className="p-8 text-center text-muted-foreground">배분 관리는 다음 단계에서 구현됩니다</div>} />
-              </Route>
+                <Route path="/projects/:id" element={<ProtectedRoute><ProjectLayout /></ProtectedRoute>}>
+                  <Route index element={<ErrorBoundary><ProjectDetailPage /></ErrorBoundary>} />
+                  <Route path="boards/:boardId" element={<ErrorBoundary><BoardPage /></ErrorBoundary>} />
+                  <Route path="dm" element={<ErrorBoundary><DMPage /></ErrorBoundary>} />
+                  <Route path="members" element={<ErrorBoundary><MembersPage /></ErrorBoundary>} />
+                  <Route path="settings" element={<ErrorBoundary><ProjectSettingsPage /></ErrorBoundary>} />
+                  <Route path="admin/allocation" element={<div className="p-8 text-center text-muted-foreground">배분 관리는 다음 단계에서 구현됩니다</div>} />
+                </Route>
 
-              <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ErrorBoundary>
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
