@@ -174,6 +174,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
         setTotalWorkers(count || 0);
       }
     }
+
+    setLoading(false);
   };
 
   const openUploadDialog = (mode: 'new' | 'version', doc?: GuideDocument) => {
