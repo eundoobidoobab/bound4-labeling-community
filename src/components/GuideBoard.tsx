@@ -165,13 +165,12 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           setDownloadCounts(counts);
         }
 
-        // Count total workers
-        const { count } = await supabase
-          .from('project_memberships')
-          .select('*', { count: 'exact', head: true })
-          .eq('project_id', projectId)
-          .eq('status', 'ACTIVE');
-        setTotalWorkers(count || 0);
+        // Count total members (workers + admins)
+        const [{ count: workerCount }, { count: adminCount }] = await Promise.all([
+          supabase.from('project_memberships').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'ACTIVE'),
+          supabase.from('project_admins').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
+        ]);
+        setTotalWorkers((workerCount || 0) + (adminCount || 0));
       }
     }
 
