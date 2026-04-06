@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getProjectMemberIds, sendNotifications } from '@/lib/notifications';
+import { getProjectMemberIds, getProjectAdminIds, sendNotifications } from '@/lib/notifications';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
