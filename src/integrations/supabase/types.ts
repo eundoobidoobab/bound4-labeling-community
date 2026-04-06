@@ -101,6 +101,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          is_closed: boolean
           title: string
           work_date: string
         }
@@ -111,6 +112,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          is_closed?: boolean
           title: string
           work_date: string
         }
@@ -121,6 +123,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          is_closed?: boolean
           title?: string
           work_date?: string
         }

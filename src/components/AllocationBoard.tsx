@@ -28,6 +28,7 @@ interface AllocationCall {
   apply_deadline: string;
   created_by: string;
   created_at: string;
+  is_closed: boolean;
 }
 
 interface Application {
@@ -252,8 +253,8 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     if (!user || !applyCallId) return;
     // Frontend deadline check
     const call = calls.find(c => c.id === applyCallId);
-    if (call?.apply_deadline && new Date() > new Date(call.apply_deadline)) {
-      toast({ title: '신청 마감', description: '신청 마감일이 지났습니다.', variant: 'destructive' });
+    if (call?.is_closed || (call?.apply_deadline && new Date() > new Date(call.apply_deadline))) {
+      toast({ title: '신청 마감', description: '이 공고는 마감되었습니다.', variant: 'destructive' });
       return;
     }
     const qty = applyQuantity.trim() ? parseInt(applyQuantity) : null;
@@ -386,6 +387,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const getCallStatus = (call: AllocationCall) => {
+    if (call.is_closed) return { label: '마감', variant: 'secondary' as const };
     if (!call.apply_deadline) return { label: '신청 중', variant: 'default' as const };
     const now = new Date();
     const deadline = new Date(call.apply_deadline);
@@ -486,6 +488,19 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
                           <Pencil className="mr-2 h-4 w-4" />수정
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          const newClosed = !selectedCall.is_closed;
+                          await supabase.from('allocation_calls').update({ is_closed: newClosed } as any).eq('id', selectedCall.id);
+                          toast({ title: newClosed ? '마감 처리되었습니다' : '마감이 해제되었습니다' });
+                          fetchCalls();
+                          fetchCallDetail({ ...selectedCall, is_closed: newClosed });
+                        }}>
+                          {selectedCall.is_closed ? (
+                            <><CheckCircle2 className="mr-2 h-4 w-4" />마감 해제</>
+                          ) : (
+                            <><XCircle className="mr-2 h-4 w-4" />마감 처리</>
+                          )}
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
                           <Trash2 className="mr-2 h-4 w-4" />삭제
