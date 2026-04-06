@@ -372,7 +372,21 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base">{doc.title}</CardTitle>
+                          {editingDocId === doc.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                className="h-8 text-base font-semibold"
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateDocTitle(doc.id); if (e.key === 'Escape') setEditingDocId(null); }}
+                                autoFocus
+                              />
+                              <Button size="sm" variant="ghost" onClick={() => handleUpdateDocTitle(doc.id)}>저장</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingDocId(null)}>취소</Button>
+                            </div>
+                          ) : (
+                            <CardTitle className="text-base">{doc.title}</CardTitle>
+                          )}
                           <div className="flex items-center gap-2 mt-1">
                             {latest && (
                               <>
@@ -394,6 +408,23 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
                           <Badge variant="secondary" className="gap-1 text-primary">
                             <CheckCircle2 className="h-3 w-3" /> 확인됨
                           </Badge>
+                        )}
+                        {role === 'admin' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => { setEditingDocId(doc.id); setEditTitle(doc.title); }}>
+                                <Pencil className="mr-2 h-4 w-4" />제목 수정
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteDocument(doc)}>
+                                <Trash2 className="mr-2 h-4 w-4" />삭제
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     </div>
