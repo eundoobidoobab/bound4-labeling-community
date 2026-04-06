@@ -1025,7 +1025,7 @@ function WorkerDetailSection({
     );
   }
 
-  if (isPastDeadline) {
+  if (isClosed) {
     return (
       <Card>
         <CardContent className="py-6 text-center">
