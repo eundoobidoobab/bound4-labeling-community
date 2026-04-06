@@ -92,6 +92,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   // Worker apply dialog
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyQuantity, setApplyQuantity] = useState('');
+  const [applyWorkerRef, setApplyWorkerRef] = useState('');
   const [applyCallId, setApplyCallId] = useState<string | null>(null);
 
   // Worker's own applications
