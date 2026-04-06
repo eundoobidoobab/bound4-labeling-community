@@ -37,6 +37,7 @@ interface Application {
   status: 'APPLIED' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
   created_at: string;
   desired_quantity: number | null;
+  worker_ref: string | null;
 }
 
 interface Assignment {
