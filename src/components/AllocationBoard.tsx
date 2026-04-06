@@ -770,17 +770,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Label>설명 (선택)</Label>
               <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="작업 내용, 요구사항 등을 설명하세요" rows={3} className="resize-none" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>작업일</Label>
-                <Input type="date" value={newWorkDate} onChange={e => setNewWorkDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>신청 마감</Label>
-                <Input type="datetime-local" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>신청 마감</Label>
+              <Input type="datetime-local" value={newDeadline} onChange={e => setNewDeadline(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newWorkDate || !newDeadline}>
+            <Button className="w-full" onClick={handleCreateCall} disabled={submitting || !newTitle.trim() || !newDeadline}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 등록
             </Button>
           </div>
