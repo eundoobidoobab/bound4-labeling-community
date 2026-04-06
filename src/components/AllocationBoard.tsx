@@ -175,7 +175,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleCreateCall = async () => {
-    if (!newTitle.trim() || !newDeadline || !user) return;
+    if (!newTitle.trim() || !user) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').insert({
@@ -183,9 +183,9 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
         title: newTitle.trim(),
         description: newDesc.trim() || null,
         work_date: new Date().toISOString().slice(0, 10),
-        apply_deadline: new Date(newDeadline).toISOString(),
+        apply_deadline: newDeadline ? new Date(newDeadline).toISOString() : null,
         created_by: user.id,
-      });
+      } as any);
       if (error) throw error;
       toast({ title: '배분 공고가 등록되었습니다' });
       setCreateOpen(false);
