@@ -62,6 +62,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
   const [historyDoc, setHistoryDoc] = useState<GuideDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const versionFileRef = useRef<HTMLInputElement>(null);
 
