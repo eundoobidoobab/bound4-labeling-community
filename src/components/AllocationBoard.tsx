@@ -463,6 +463,23 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-xl font-bold text-foreground">{selectedCall.title}</h2>
                   <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(selectedCall)}>
+                          <Pencil className="mr-2 h-4 w-4" />수정
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCall(selectedCall)}>
+                          <Trash2 className="mr-2 h-4 w-4" />삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 {selectedCall.description && (
                   <p className="text-sm text-muted-foreground mb-3">{selectedCall.description}</p>
