@@ -796,17 +796,11 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
               <Label>설명 (선택)</Label>
               <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} className="resize-none" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>작업일</Label>
-                <Input type="date" value={editWorkDate} onChange={e => setEditWorkDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>신청 마감</Label>
-                <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>신청 마감</Label>
+              <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editWorkDate || !editDeadline}>
+            <Button className="w-full" onClick={handleEditCall} disabled={submitting || !editTitle.trim() || !editDeadline}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 저장
             </Button>
           </div>
