@@ -1097,6 +1097,7 @@ export type Database = {
         | "DM_NEW_MESSAGE"
         | "NOTICE_PUBLISHED"
         | "GUIDE_UPDATED"
+        | "POST_CREATED"
       post_status: "ACTIVE" | "ARCHIVED"
       project_status: "ACTIVE" | "ARCHIVED"
     }
@@ -1240,6 +1241,7 @@ export const Constants = {
         "DM_NEW_MESSAGE",
         "NOTICE_PUBLISHED",
         "GUIDE_UPDATED",
+        "POST_CREATED",
       ],
       post_status: ["ACTIVE", "ARCHIVED"],
       project_status: ["ACTIVE", "ARCHIVED"],
