@@ -13,8 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { motion } from 'framer-motion';
 import {
   Loader2, Plus, Calendar, Clock, Users, CheckCircle2, XCircle,
-  UserCheck, ChevronLeft, ChevronRight, AlertTriangle, Package, Send
+  UserCheck, ChevronLeft, ChevronRight, AlertTriangle, Package, Send, MoreHorizontal, Pencil, Trash2
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDateTime } from '@/lib/formatDate';
 import { useToast } from '@/hooks/use-toast';
 
