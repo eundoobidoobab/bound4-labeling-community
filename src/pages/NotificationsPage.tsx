@@ -24,6 +24,7 @@ const typeLabels: Record<string, string> = {
   DM_NEW_MESSAGE: '새 메시지',
   NOTICE_PUBLISHED: '새 공지',
   GUIDE_UPDATED: '가이드 업데이트',
+  POST_CREATED: '새 게시글',
 };
 
 export default function NotificationsPage() {
