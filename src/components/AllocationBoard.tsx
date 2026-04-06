@@ -132,6 +132,17 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       setProfiles(map);
     }
 
+    // Fetch application counts for each call
+    if (items.length > 0) {
+      const { data: countData } = await supabase
+        .from('allocation_applications')
+        .select('call_id')
+        .in('call_id', items.map(c => c.id));
+      const counts: Record<string, number> = {};
+      (countData || []).forEach((a: any) => { counts[a.call_id] = (counts[a.call_id] || 0) + 1; });
+      setApplicationCounts(counts);
+    }
+
     if (user && !isAdmin && items.length > 0) {
       const { data: apps } = await supabase
         .from('allocation_applications')
