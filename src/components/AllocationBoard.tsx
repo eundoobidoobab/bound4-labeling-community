@@ -410,12 +410,20 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   // Shared dialogs (rendered regardless of view)
   const applyDialog = (
-    <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyCallId(null); } }}>
+    <Dialog open={applyOpen} onOpenChange={v => { if (!v) { setApplyOpen(false); setApplyQuantity(''); setApplyWorkerRef(''); setApplyCallId(null); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>작업 신청</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>작업자 ID</Label>
+            <Input
+              value={applyWorkerRef}
+              onChange={e => setApplyWorkerRef(e.target.value)}
+              placeholder="본인의 작업자 ID를 입력하세요"
+            />
+          </div>
           <div className="space-y-2">
             <Label>희망 수량 (선택)</Label>
             <Input
