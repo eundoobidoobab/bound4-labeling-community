@@ -401,10 +401,10 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
 
   const getCallStatus = (call: AllocationCall) => {
     if (call.is_closed) return { label: '마감', variant: 'secondary' as const };
-    if (!call.apply_deadline) return { label: '신청 중', variant: 'default' as const };
+    if (!call.apply_deadline) return { label: '모집 중', variant: 'default' as const };
     const now = new Date();
     const deadline = new Date(call.apply_deadline);
-    if (now < deadline) return { label: '신청 중', variant: 'default' as const };
+    if (now < deadline) return { label: '모집 중', variant: 'default' as const };
     return { label: '마감', variant: 'secondary' as const };
   };
 
