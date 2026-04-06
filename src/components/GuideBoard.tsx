@@ -291,8 +291,8 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
       {/* Admin: Create new guide */}
       {role === 'admin' && (
         <div className="mb-6">
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> 새 가이드 문서
+          <Button onClick={() => openUploadDialog('new')}>
+            <Plus className="mr-2 h-4 w-4" /> 가이드 업로드
           </Button>
         </div>
       )}
