@@ -560,6 +560,17 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
                   setApplyCallId(selectedCall.id);
                   setApplyOpen(true);
                 }}
+                onCancelClick={async () => {
+                  if (!myApp) return;
+                  const { error } = await supabase.from('allocation_applications').delete().eq('id', myApp.id);
+                  if (error) {
+                    toast({ title: '취소 실패', description: error.message, variant: 'destructive' });
+                  } else {
+                    toast({ title: '신청이 취소되었습니다' });
+                    fetchCalls();
+                    fetchCallDetail(selectedCall);
+                  }
+                }}
               />
             )}
 
@@ -935,11 +946,13 @@ function WorkerDetailSection({
   myApp,
   myAssignment,
   onApplyClick,
+  onCancelClick,
 }: {
   call: AllocationCall;
   myApp?: Application;
   myAssignment?: Assignment;
   onApplyClick: () => void;
+  onCancelClick: () => void;
 }) {
   const now = new Date();
   const deadline = new Date(call.apply_deadline);
@@ -992,14 +1005,21 @@ function WorkerDetailSection({
     return (
       <Card>
         <CardContent className="py-6">
-          <div className="flex items-center gap-3">
-            <Icon className={`h-5 w-5 ${s.color}`} />
-            <div>
-              <p className="text-sm text-foreground">{s.label}</p>
-              {myApp.desired_quantity && (
-                <p className="text-xs text-muted-foreground mt-1">희망 수량: {myApp.desired_quantity}</p>
-              )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Icon className={`h-5 w-5 ${s.color}`} />
+              <div>
+                <p className="text-sm text-foreground">{s.label}</p>
+                {myApp.desired_quantity && (
+                  <p className="text-xs text-muted-foreground mt-1">희망 수량: {myApp.desired_quantity}</p>
+                )}
+              </div>
             </div>
+            {myApp.status === 'APPLIED' && (
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive shrink-0" onClick={onCancelClick}>
+                신청 취소
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
