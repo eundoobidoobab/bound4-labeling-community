@@ -252,7 +252,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
     if (!user || !applyCallId) return;
     // Frontend deadline check
     const call = calls.find(c => c.id === applyCallId);
-    if (call && new Date() > new Date(call.apply_deadline)) {
+    if (call?.apply_deadline && new Date() > new Date(call.apply_deadline)) {
       toast({ title: '신청 마감', description: '신청 마감일이 지났습니다.', variant: 'destructive' });
       return;
     }
