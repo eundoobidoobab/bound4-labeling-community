@@ -187,7 +187,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
       if (error) throw error;
       toast({ title: '배분 공고가 등록되었습니다' });
       setCreateOpen(false);
-      setNewTitle(''); setNewDesc(''); setNewWorkDate(''); setNewDeadline('');
+      setNewTitle(''); setNewDesc(''); setNewDeadline('');
       fetchCalls();
     } catch (err: any) {
       toast({ title: '등록 실패', description: err.message, variant: 'destructive' });
