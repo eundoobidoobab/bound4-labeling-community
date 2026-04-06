@@ -1005,7 +1005,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      project_invitations_safe: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          expires_at: string | null
+          id: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          expires_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          expires_at?: string | null
+          id?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {
