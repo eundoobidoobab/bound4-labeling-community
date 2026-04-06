@@ -149,9 +149,31 @@ export default function GuideBoard({ boardId, projectId }: GuideBoardProps) {
           }
         }
       }
-    }
 
-    setLoading(false);
+      // Fetch download counts for latest versions (admin)
+      if (role === 'admin') {
+        const latestIds = docList.map(d => versionMap[d.id]?.[0]?.id).filter(Boolean);
+        if (latestIds.length > 0) {
+          const { data: dlData } = await supabase
+            .from('guide_downloads')
+            .select('guide_version_id')
+            .in('guide_version_id', latestIds);
+          const counts: Record<string, number> = {};
+          (dlData || []).forEach((d: any) => {
+            counts[d.guide_version_id] = (counts[d.guide_version_id] || 0) + 1;
+          });
+          setDownloadCounts(counts);
+        }
+
+        // Count total workers
+        const { count } = await supabase
+          .from('project_memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', projectId)
+          .eq('status', 'ACTIVE');
+        setTotalWorkers(count || 0);
+      }
+    }
   };
 
   const openUploadDialog = (mode: 'new' | 'version', doc?: GuideDocument) => {
