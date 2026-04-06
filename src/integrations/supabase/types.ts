@@ -95,7 +95,7 @@ export type Database = {
       }
       allocation_calls: {
         Row: {
-          apply_deadline: string
+          apply_deadline: string | null
           board_id: string
           created_at: string
           created_by: string
@@ -105,7 +105,7 @@ export type Database = {
           work_date: string
         }
         Insert: {
-          apply_deadline: string
+          apply_deadline?: string | null
           board_id: string
           created_at?: string
           created_by: string
@@ -115,7 +115,7 @@ export type Database = {
           work_date: string
         }
         Update: {
-          apply_deadline?: string
+          apply_deadline?: string | null
           board_id?: string
           created_at?: string
           created_by?: string
