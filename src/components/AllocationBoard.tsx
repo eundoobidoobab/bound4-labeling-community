@@ -955,8 +955,7 @@ function WorkerDetailSection({
   onCancelClick: () => void;
 }) {
   const now = new Date();
-  const deadline = new Date(call.apply_deadline);
-  const isPastDeadline = now >= deadline;
+  const isClosed = call.is_closed || (call.apply_deadline ? now >= new Date(call.apply_deadline) : false);
 
   if (myAssignment) {
     const isDone = myAssignment.status === 'DISTRIBUTED_DONE';
@@ -1026,7 +1025,7 @@ function WorkerDetailSection({
     );
   }
 
-  if (isPastDeadline) {
+  if (isClosed) {
     return (
       <Card>
         <CardContent className="py-6 text-center">
