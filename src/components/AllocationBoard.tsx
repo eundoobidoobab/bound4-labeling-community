@@ -173,7 +173,7 @@ export default function AllocationBoard({ boardId, projectId }: AllocationBoardP
   };
 
   const handleCreateCall = async () => {
-    if (!newTitle.trim() || !newWorkDate || !newDeadline || !user) return;
+    if (!newTitle.trim() || !newDeadline || !user) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('allocation_calls').insert({
