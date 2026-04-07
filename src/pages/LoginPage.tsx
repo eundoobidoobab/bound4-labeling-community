@@ -298,6 +298,34 @@ export default function LoginPage() {
               </Button>
             </form>
 
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">또는</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              style={{ backgroundColor: '#FEE500', color: '#000000', borderColor: '#FEE500' }}
+              disabled={isLoading}
+              onClick={async () => {
+                await supabase.auth.signInWithOAuth({
+                  provider: 'kakao',
+                  options: { redirectTo: window.location.origin + '/projects' },
+                });
+              }}
+            >
+              <svg viewBox="0 0 24 24" className="mr-2 h-5 w-5" fill="#000000">
+                <path d="M12 3C6.477 3 2 6.463 2 10.691c0 2.734 1.811 5.134 4.54 6.485-.2.747-.725 2.713-.83 3.131-.13.518.19.511.398.372.164-.109 2.609-1.772 3.665-2.492.718.106 1.46.162 2.227.162 5.523 0 10-3.463 10-7.658C22 6.463 17.523 3 12 3z"/>
+              </svg>
+              카카오로 계속하기
+            </Button>
+
             <div className="mt-4 space-y-2 text-center">
               {mode === 'login' && (
                 <button
