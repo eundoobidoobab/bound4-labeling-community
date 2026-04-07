@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import type { Application, Assignment, Profile } from './types';
 import { getAppStatusUI } from './types';
@@ -73,7 +74,7 @@ export default function ApplicantTable({
         ) : (
           <div className="border border-border rounded-lg overflow-hidden">
             {/* Desktop header */}
-            <div className="hidden md:grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
+            <div className="hidden md:grid grid-cols-[40px_1fr_minmax(120px,auto)_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
               <div>
                 <Checkbox
                   checked={selectableApps.length > 0 && selectableApps.every(a => checkedIds.has(a.id))}
@@ -108,7 +109,7 @@ export default function ApplicantTable({
               return (
                 <div key={app.id}>
                   {/* Desktop row */}
-                  <div className={`hidden md:grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${isChecked ? 'bg-primary/5' : 'hover:bg-muted/30'} ${isDone ? 'opacity-60' : ''}`}>
+                  <div className={`hidden md:grid grid-cols-[40px_1fr_minmax(120px,auto)_120px_100px_120px] items-center px-4 py-3 border-b border-border last:border-b-0 transition-colors ${isChecked ? 'bg-primary/5' : 'hover:bg-muted/30'} ${isDone ? 'opacity-60' : ''}`}>
                     <div>
                       <Checkbox checked={isChecked} onCheckedChange={() => onToggleCheck(app.id)} disabled={isDone} />
                     </div>
@@ -118,7 +119,20 @@ export default function ApplicantTable({
                       </Avatar>
                       <p className="text-sm font-medium text-foreground truncate">{worker?.display_name || worker?.email || '알 수 없음'}</p>
                     </div>
-                    <div className="text-sm text-muted-foreground truncate">{app.worker_ref || '-'}</div>
+                    <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                      {app.worker_ref ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="truncate block cursor-default">{app.worker_ref}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">{app.worker_ref}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : '-'}
+                    </div>
                     <div>
                       {isDone ? (
                         <span className="text-sm text-foreground">{existingAssignment?.assigned_quantity ?? app.desired_quantity ?? '-'}</span>
