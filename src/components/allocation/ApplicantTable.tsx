@@ -74,7 +74,7 @@ export default function ApplicantTable({
         ) : (
           <div className="border border-border rounded-lg overflow-hidden">
             {/* Desktop header */}
-            <div className="hidden md:grid grid-cols-[40px_1fr_100px_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
+            <div className="hidden md:grid grid-cols-[40px_1fr_minmax(120px,auto)_120px_100px_120px] items-center px-4 py-3 bg-muted/50 text-xs text-muted-foreground font-medium border-b border-border">
               <div>
                 <Checkbox
                   checked={selectableApps.length > 0 && selectableApps.every(a => checkedIds.has(a.id))}
