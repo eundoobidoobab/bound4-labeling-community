@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Loader2, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import type { Application, Assignment, Profile } from './types';
 import { getAppStatusUI } from './types';
