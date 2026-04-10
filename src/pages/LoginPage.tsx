@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { motion } from 'framer-motion';
-import { Loader2, LogIn, UserPlus, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
+import { CheckCircle2, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AuthLayout from '@/components/auth/AuthLayout';
+import LoginForm from '@/components/auth/LoginForm';
+import SignUpForm from '@/components/auth/SignUpForm';
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import EmailSentConfirmation from '@/components/auth/EmailSentConfirmation';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
@@ -24,10 +24,12 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate('/projects', { replace: true });
-    }
+    if (user) navigate('/projects', { replace: true });
   }, [user, navigate]);
+
+  const resetFields = () => {
+    setEmail(''); setPassword(''); setConfirmPassword(''); setDisplayName('');
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,11 +37,11 @@ export default function LoginPage() {
     const { error } = await signIn(email, password);
     setIsLoading(false);
     if (error) {
-      if (error.message === 'Email not confirmed') {
-        toast({ title: '이메일 인증이 필요합니다', description: '가입 시 발송된 인증 메일을 확인해주세요.', variant: 'destructive' });
-      } else {
-        toast({ title: '로그인 실패', description: '이메일 또는 비밀번호를 확인해주세요.', variant: 'destructive' });
-      }
+      toast({
+        title: error.message === 'Email not confirmed' ? '이메일 인증이 필요합니다' : '로그인 실패',
+        description: error.message === 'Email not confirmed' ? '가입 시 발송된 인증 메일을 확인해주세요.' : '이메일 또는 비밀번호를 확인해주세요.',
+        variant: 'destructive',
+      });
     } else {
       navigate('/projects', { replace: true });
     }
@@ -47,29 +49,17 @@ export default function LoginPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName.trim()) {
-      toast({ title: '이름을 입력해주세요', variant: 'destructive' });
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast({ title: '비밀번호가 일치하지 않습니다', description: '비밀번호 확인을 다시 입력해주세요.', variant: 'destructive' });
-      return;
-    }
+    if (!displayName.trim()) { toast({ title: '이름을 입력해주세요', variant: 'destructive' }); return; }
+    if (password !== confirmPassword) { toast({ title: '비밀번호가 일치하지 않습니다', description: '비밀번호 확인을 다시 입력해주세요.', variant: 'destructive' }); return; }
     setIsLoading(true);
     const { error, data } = await signUp(email, password, displayName.trim());
     setIsLoading(false);
     if (error) {
       toast({ title: '회원가입 실패', description: error.message, variant: 'destructive' });
+    } else if (data?.user?.identities?.length === 0) {
+      toast({ title: '이미 가입된 이메일입니다', description: '로그인 페이지에서 로그인해주세요.', variant: 'destructive' });
+      setMode('login'); setPassword(''); setConfirmPassword(''); setDisplayName('');
     } else {
-      if (data?.user?.identities?.length === 0) {
-        // User already exists
-        toast({ title: '이미 가입된 이메일입니다', description: '로그인 페이지에서 로그인해주세요.', variant: 'destructive' });
-        setMode('login');
-        setPassword('');
-        setConfirmPassword('');
-        setDisplayName('');
-        return;
-      }
       setSignUpSuccess(true);
     }
   };
@@ -89,242 +79,79 @@ export default function LoginPage() {
     }
   };
 
+  // Success states
   if (forgotSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm">
-          <Card>
-            <CardContent className="pt-8 pb-6 text-center space-y-4">
-              <div className="flex justify-center">
-                <Mail className="h-16 w-16 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">이메일을 확인해주세요</h2>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{email}</span>
-                (으)로 비밀번호 재설정 메일을 발송했습니다.
-              </p>
-              <p className="text-sm text-muted-foreground">메일함에서 재설정 링크를 클릭해주세요.</p>
-              <Button variant="outline" className="w-full mt-4" onClick={() => { setForgotSent(false); setMode('login'); setEmail(''); }}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                로그인으로 돌아가기
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (mode === 'forgot') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-foreground">바운드포 라벨링</h1>
-          </div>
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-xl">비밀번호 찾기</CardTitle>
-              <CardDescription>가입한 이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드립니다.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="forgotEmail">이메일</Label>
-                  <Input
-                    id="forgotEmail"
-                    type="email"
-                    placeholder="email@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="username"
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  재설정 메일 보내기
-                </Button>
-              </form>
-              <div className="mt-4 text-center">
-                <button type="button" onClick={() => { setMode('login'); setEmail(''); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  <ArrowLeft className="inline mr-1 h-3 w-3" />
-                  로그인으로 돌아가기
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+      <AuthLayout animateType="fade">
+        <EmailSentConfirmation
+          email={email}
+          icon={<Mail className="h-16 w-16 text-primary" />}
+          title="이메일을 확인해주세요"
+          description="(으)로 비밀번호 재설정 메일을 발송했습니다."
+          onBack={() => { setForgotSent(false); setMode('login'); setEmail(''); }}
+        />
+      </AuthLayout>
     );
   }
 
   if (signUpSuccess) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-sm"
-        >
-          <Card>
-            <CardContent className="pt-8 pb-6 text-center space-y-4">
-              <div className="flex justify-center">
-                <CheckCircle2 className="h-16 w-16 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">이메일을 확인해주세요</h2>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{email}</span>
-                (으)로 인증 메일을 발송했습니다.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                메일함에서 인증 링크를 클릭하면 가입이 완료됩니다.
-              </p>
-              <Button
-                variant="outline"
-                className="w-full mt-4"
-                onClick={() => {
-                  setSignUpSuccess(false);
-                  setMode('login');
-                  setPassword('');
-                  setConfirmPassword('');
-                }}
-              >
-                로그인으로 돌아가기
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+      <AuthLayout animateType="fade">
+        <EmailSentConfirmation
+          email={email}
+          icon={<CheckCircle2 className="h-16 w-16 text-primary" />}
+          title="이메일을 확인해주세요"
+          description="(으)로 인증 메일을 발송했습니다."
+          onBack={() => { setSignUpSuccess(false); setMode('login'); setPassword(''); setConfirmPassword(''); }}
+        />
+      </AuthLayout>
     );
   }
 
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
-  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  // Forgot password mode
+  if (mode === 'forgot') {
+    return (
+      <AuthLayout showHeader>
+        <ForgotPasswordForm
+          email={email}
+          isLoading={isLoading}
+          onEmailChange={setEmail}
+          onSubmit={handleForgotPassword}
+          onBack={() => { setMode('login'); setEmail(''); }}
+        />
+      </AuthLayout>
+    );
+  }
 
+  // Login / Signup mode
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-sm"
-      >
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-foreground">바운드포 라벨링</h1>
-          <p className="mt-2 text-sm text-muted-foreground">프로젝트 운영 플랫폼</p>
-        </div>
-
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">{mode === 'login' ? '로그인' : '회원가입'}</CardTitle>
-            <CardDescription>
-              {mode === 'login' ? '계정 정보를 입력해주세요' : '새 계정을 만들어주세요'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={mode === 'login' ? handleLogin : handleSignUp} className="space-y-4" autoComplete={mode === 'signup' ? 'off' : 'on'}>
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">이름 (실명)</Label>
-                  <Input
-                    id="displayName"
-                    type="text"
-                    placeholder="홍길동"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    required
-                    autoComplete="off"
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">이메일</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete={mode === 'login' ? 'username' : 'off'}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">비밀번호</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={mode === 'signup' ? '6자 이상' : ''}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={mode === 'signup' ? 6 : undefined}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                />
-              </div>
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">비밀번호 확인</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="비밀번호를 다시 입력해주세요"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    autoComplete="new-password"
-                    className={passwordsMismatch ? 'border-destructive focus-visible:ring-destructive' : passwordsMatch ? 'border-primary focus-visible:ring-primary' : ''}
-                  />
-                  {passwordsMismatch && (
-                    <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다</p>
-                  )}
-                  {passwordsMatch && (
-                    <p className="text-xs text-primary">비밀번호가 일치합니다</p>
-                  )}
-                </div>
-              )}
-              <Button type="submit" className="w-full" disabled={isLoading || (mode === 'signup' && passwordsMismatch)}>
-                {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : mode === 'login' ? (
-                  <LogIn className="mr-2 h-4 w-4" />
-                ) : (
-                  <UserPlus className="mr-2 h-4 w-4" />
-                )}
-                {mode === 'login' ? '로그인' : '회원가입'}
-              </Button>
-            </form>
-
-            <div className="mt-4 space-y-2 text-center">
-              {mode === 'login' && (
-                <button
-                  type="button"
-                  onClick={() => { setMode('forgot'); setPassword(''); }}
-                  className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  비밀번호를 잊으셨나요?
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'login' ? 'signup' : 'login');
-                  setEmail('');
-                  setPassword('');
-                  setConfirmPassword('');
-                  setDisplayName('');
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+    <AuthLayout showHeader>
+      {mode === 'login' ? (
+        <LoginForm
+          email={email}
+          password={password}
+          isLoading={isLoading}
+          onEmailChange={setEmail}
+          onPasswordChange={setPassword}
+          onSubmit={handleLogin}
+          onForgotPassword={() => { setMode('forgot'); setPassword(''); }}
+          onSwitchToSignUp={() => { setMode('signup'); resetFields(); }}
+        />
+      ) : (
+        <SignUpForm
+          email={email}
+          password={password}
+          confirmPassword={confirmPassword}
+          displayName={displayName}
+          isLoading={isLoading}
+          onEmailChange={setEmail}
+          onPasswordChange={setPassword}
+          onConfirmPasswordChange={setConfirmPassword}
+          onDisplayNameChange={setDisplayName}
+          onSubmit={handleSignUp}
+          onSwitchToLogin={() => { setMode('login'); resetFields(); }}
+        />
+      )}
+    </AuthLayout>
   );
 }
