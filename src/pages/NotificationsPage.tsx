@@ -20,6 +20,8 @@ interface Notification {
   project_id: string | null;
 }
 
+const PAGE_SIZE = 30;
+
 const typeLabels: Record<string, string> = {
   ALLOCATION_DISTRIBUTED: '배분 완료',
   DM_NEW_MESSAGE: '새 메시지',
@@ -33,19 +35,28 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [projectNames, setProjectNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const navigate = useNavigate();
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (offset = 0, append = false) => {
     if (!user) return;
+    if (append) setLoadingMore(true); else setLoading(true);
+
     const { data } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .range(offset, offset + PAGE_SIZE - 1);
+
     if (data) {
-      setNotifications(data as Notification[]);
-      const projectIds = [...new Set(data.map((n: any) => n.project_id).filter(Boolean))] as string[];
+      const items = data as Notification[];
+      setHasMore(items.length === PAGE_SIZE);
+      setNotifications(prev => append ? [...prev, ...items] : items);
+
+      const allNotifs = append ? [...notifications, ...items] : items;
+      const projectIds = [...new Set(allNotifs.map((n) => n.project_id).filter(Boolean))] as string[];
       if (projectIds.length > 0) {
         const { data: projects } = await supabase
           .from('projects')
@@ -54,16 +65,21 @@ export default function NotificationsPage() {
         if (projects) {
           const map: Record<string, string> = {};
           projects.forEach((p: any) => { map[p.id] = p.name; });
-          setProjectNames(map);
+          setProjectNames(prev => ({ ...prev, ...map }));
         }
       }
     }
     setLoading(false);
+    setLoadingMore(false);
   };
 
   useEffect(() => {
     fetchNotifications();
   }, [user]);
+
+  const handleLoadMore = () => {
+    fetchNotifications(notifications.length, true);
+  };
 
   const handleNewNotification = useCallback((newNotif: Notification) => {
     setNotifications(prev => {
@@ -150,7 +166,6 @@ export default function NotificationsPage() {
               const unreadCount = group.notifications.filter(n => !n.is_read).length;
               return (
                 <div key={group.projectId ?? '_none'}>
-                  {/* Project group header */}
                   <div className="flex items-center gap-2 mb-3 px-1">
                     <FolderOpen className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-semibold text-foreground">{group.projectName}</span>
@@ -159,7 +174,6 @@ export default function NotificationsPage() {
                     )}
                   </div>
 
-                  {/* Notification cards */}
                   <div className="space-y-2">
                     {group.notifications.map((n, i) => (
                       <motion.div
@@ -205,6 +219,14 @@ export default function NotificationsPage() {
                 </div>
               );
             })}
+
+            {hasMore && (
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={loadingMore}>
+                  {loadingMore ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />불러오는 중...</> : '더 보기'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </main>
