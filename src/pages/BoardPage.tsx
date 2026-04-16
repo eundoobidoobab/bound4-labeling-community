@@ -201,6 +201,13 @@ export default function BoardPage() {
               />
             </motion.div>
           ))}
+          {hasNextPage && !q && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                {isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />불러오는 중...</> : '더 보기'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -233,6 +240,13 @@ export default function BoardPage() {
               />
             </motion.div>
           ))}
+          {hasNextPage && !q && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                {isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />불러오는 중...</> : '더 보기'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
