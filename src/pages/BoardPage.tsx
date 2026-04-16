@@ -27,7 +27,7 @@ export default function BoardPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data, isLoading } = useBoardData(boardId);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useBoardData(boardId);
 
   const board = data?.board ?? null;
   const notices = data?.notices ?? [];
