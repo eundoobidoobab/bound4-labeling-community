@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -9,6 +9,8 @@ import { AnimatePresence } from 'framer-motion';
 import { formatDateTime } from '@/lib/formatDate';
 
 const COMMENT_BODY_MAX = 200;
+const COMMENTS_PER_PAGE = 10;
+const PREVIEW_COUNT = 3;
 
 function CollapsibleComment({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,8 +38,6 @@ function CollapsibleComment({ text }: { text: string }) {
   );
 }
 
-const PREVIEW_COUNT = 3;
-
 interface Comment {
   id: string;
   body: string;
@@ -59,26 +59,59 @@ interface FeedCommentsProps {
 export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const { user, role } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [showAll, setShowAll] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchComments();
+    fetchInitialComments();
   }, [parentId, type]);
 
-  const fetchComments = async () => {
-    let items: Comment[] = [];
-    if (type === 'post') {
-      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId).order('created_at', { ascending: true });
-      items = (data || []) as Comment[];
-    } else {
-      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId).order('created_at', { ascending: true });
-      items = (data || []) as Comment[];
-    }
-    setComments(items);
+  const fetchInitialComments = async () => {
+    const table = type === 'post' ? 'comments' : 'notice_comments';
+    const filterCol = type === 'post' ? 'post_id' : 'notice_id';
 
+    // Get total count
+    const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(filterCol, parentId);
+    const total = count ?? 0;
+    setTotalCount(total);
+
+    // Fetch latest PREVIEW_COUNT comments (last N by created_at)
+    const { data } = await supabase.from(table).select('*').eq(filterCol, parentId)
+      .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
+    const items = ((data || []) as Comment[]).reverse();
+    setComments(items);
+    setShowAll(total <= PREVIEW_COUNT);
+
+    await fetchProfilesFor(items);
+  };
+
+  const loadOlderComments = async () => {
+    if (comments.length === 0) return;
+    setLoadingMore(true);
+    const table = type === 'post' ? 'comments' : 'notice_comments';
+    const filterCol = type === 'post' ? 'post_id' : 'notice_id';
+    const oldestDate = comments[0].created_at;
+
+    const { data } = await supabase.from(table).select('*').eq(filterCol, parentId)
+      .lt('created_at', oldestDate)
+      .order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
+
+    const olderItems = ((data || []) as Comment[]).reverse();
+    if (olderItems.length > 0) {
+      setComments(prev => [...olderItems, ...prev]);
+      await fetchProfilesFor(olderItems);
+    }
+    if (olderItems.length < COMMENTS_PER_PAGE) {
+      setShowAll(true);
+    }
+    setLoadingMore(false);
+  };
+
+  const fetchProfilesFor = async (items: Comment[]) => {
     const authorIds = [...new Set(items.map(c => c.author_id))];
     if (user) authorIds.push(user.id);
     if (authorIds.length > 0) {
@@ -103,7 +136,8 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     }
     setBody('');
     setSubmitting(false);
-    await fetchComments();
+    // Re-fetch to get the new comment
+    await fetchInitialComments();
   };
 
   const handleDelete = async (commentId: string) => {
@@ -113,6 +147,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
       await supabase.from('notice_comments').delete().eq('id', commentId);
     }
     setComments(prev => prev.filter(c => c.id !== commentId));
+    setTotalCount(prev => prev - 1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -122,9 +157,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     }
   };
 
-  const hasHidden = comments.length > PREVIEW_COUNT;
-  const hiddenCount = comments.length - PREVIEW_COUNT;
-  const visibleComments = showAll ? comments : comments.slice(-PREVIEW_COUNT);
+  const hiddenCount = totalCount - comments.length;
 
   const canDelete = (comment: Comment) => {
     return user?.id === comment.author_id || role === 'admin';
@@ -167,20 +200,24 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      {hasHidden && !showAll && (
+      {hiddenCount > 0 && (
         <button
-          onClick={() => setShowAll(true)}
+          onClick={loadOlderComments}
+          disabled={loadingMore}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
         >
-          <ChevronUp className="h-3.5 w-3.5" />
-          이전 댓글 {hiddenCount}개 더보기
+          {loadingMore ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> 불러오는 중...</>
+          ) : (
+            <><ChevronUp className="h-3.5 w-3.5" /> 이전 댓글 {hiddenCount}개 더보기</>
+          )}
         </button>
       )}
 
       <AnimatePresence initial={false}>
-        {visibleComments.length > 0 && (
+        {comments.length > 0 && (
           <div className="space-y-2.5 mb-3">
-            {visibleComments.map(renderComment)}
+            {comments.map(renderComment)}
           </div>
         )}
       </AnimatePresence>
