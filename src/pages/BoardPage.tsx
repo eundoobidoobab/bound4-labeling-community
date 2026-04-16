@@ -5,6 +5,7 @@ import { markBoardVisited } from '@/hooks/useBoardUnread';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Loader2, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +28,7 @@ export default function BoardPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data, isLoading } = useBoardData(boardId);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useBoardData(boardId);
 
   const board = data?.board ?? null;
   const notices = data?.notices ?? [];
@@ -200,6 +201,13 @@ export default function BoardPage() {
               />
             </motion.div>
           ))}
+          {hasNextPage && !q && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                {isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />불러오는 중...</> : '더 보기'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -232,6 +240,13 @@ export default function BoardPage() {
               />
             </motion.div>
           ))}
+          {hasNextPage && !q && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                {isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />불러오는 중...</> : '더 보기'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
