@@ -71,18 +71,24 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   }, [parentId, type]);
 
   const fetchInitialComments = async () => {
-    const table = type === 'post' ? 'comments' : 'notice_comments';
-    const filterCol = type === 'post' ? 'post_id' : 'notice_id';
+    let total = 0;
+    let items: Comment[] = [];
 
-    // Get total count
-    const { count } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(filterCol, parentId);
-    const total = count ?? 0;
+    if (type === 'post') {
+      const { count } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', parentId);
+      total = count ?? 0;
+      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId)
+        .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
+      items = ((data || []) as Comment[]).reverse();
+    } else {
+      const { count } = await supabase.from('notice_comments').select('*', { count: 'exact', head: true }).eq('notice_id', parentId);
+      total = count ?? 0;
+      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId)
+        .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
+      items = ((data || []) as Comment[]).reverse();
+    }
+
     setTotalCount(total);
-
-    // Fetch latest PREVIEW_COUNT comments (last N by created_at)
-    const { data } = await supabase.from(table).select('*').eq(filterCol, parentId)
-      .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
-    const items = ((data || []) as Comment[]).reverse();
     setComments(items);
     setShowAll(total <= PREVIEW_COUNT);
 
@@ -92,15 +98,18 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   const loadOlderComments = async () => {
     if (comments.length === 0) return;
     setLoadingMore(true);
-    const table = type === 'post' ? 'comments' : 'notice_comments';
-    const filterCol = type === 'post' ? 'post_id' : 'notice_id';
     const oldestDate = comments[0].created_at;
+    let olderItems: Comment[] = [];
 
-    const { data } = await supabase.from(table).select('*').eq(filterCol, parentId)
-      .lt('created_at', oldestDate)
-      .order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
-
-    const olderItems = ((data || []) as Comment[]).reverse();
+    if (type === 'post') {
+      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId)
+        .lt('created_at', oldestDate).order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
+      olderItems = ((data || []) as Comment[]).reverse();
+    } else {
+      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId)
+        .lt('created_at', oldestDate).order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
+      olderItems = ((data || []) as Comment[]).reverse();
+    }
     if (olderItems.length > 0) {
       setComments(prev => [...olderItems, ...prev]);
       await fetchProfilesFor(olderItems);
