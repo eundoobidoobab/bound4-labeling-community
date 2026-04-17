@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,8 @@ import { formatDateTime } from '@/lib/formatDate';
 import EditableContent from '@/components/EditableContent';
 import FeedAttachments from '@/components/FeedAttachments';
 import FeedComments from '@/components/FeedComments';
-import { supabase } from '@/integrations/supabase/client';
 import type { Notice, Post, Attachment, Profile } from '@/types';
+import type { CommentsBundle } from '@/hooks/useBoardData';
 
 const TITLE_MAX = 80;
 const BODY_MAX_LINES = 8;
@@ -56,6 +56,9 @@ interface NoticeCardProps {
   notice: Notice;
   author: Profile | undefined;
   attachments: Attachment[];
+  signedUrls?: Record<string, string>;
+  commentsInitial?: CommentsBundle;
+  onCommentsChanged?: () => void;
   isAdmin: boolean;
   isEditing: boolean;
   onEdit: () => void;
@@ -67,8 +70,8 @@ interface NoticeCardProps {
 }
 
 export function NoticeCard({
-  notice, author, attachments, isAdmin,
-  isEditing, onEdit, onCancelEdit, onSave,
+  notice, author, attachments, signedUrls, commentsInitial, onCommentsChanged,
+  isAdmin, isEditing, onEdit, onCancelEdit, onSave,
   onDelete, onTogglePin, onViewReads,
 }: NoticeCardProps) {
   return (
