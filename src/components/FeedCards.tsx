@@ -125,7 +125,7 @@ export function NoticeCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pl-[60px]">
+      <CardContent className="pl-[72px]">
         {isEditing ? (
           <EditableContent
             title={notice.title}
@@ -209,7 +209,7 @@ export function PostCard({
           )}
         </div>
       </CardHeader>
-      <CardContent className="pl-[60px]">
+      <CardContent className="pl-[72px]">
         {isEditing ? (
           <EditableContent
             title={post.title}
