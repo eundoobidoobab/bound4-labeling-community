@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+
 import { formatDateTime } from '@/lib/formatDate';
 
 const COMMENT_BODY_MAX = 200;
@@ -223,13 +223,11 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
         </button>
       )}
 
-      <AnimatePresence initial={false}>
-        {comments.length > 0 && (
-          <div className="space-y-2.5 mb-3">
-            {comments.map(renderComment)}
-          </div>
-        )}
-      </AnimatePresence>
+      {comments.length > 0 && (
+        <div className="space-y-2.5 mb-3">
+          {comments.map(renderComment)}
+        </div>
+      )}
 
       {user && (
         <div className="flex gap-2">
