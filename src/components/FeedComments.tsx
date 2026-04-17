@@ -78,15 +78,22 @@ export default function FeedComments({ type, parentId, initial, onChanged }: Fee
     setLoadingMore(true);
     const oldestDate = comments[0].created_at;
     let olderItems: CommentPreview[] = [];
-    const table = type === 'post' ? 'comments' : 'notice_comments';
-    const col = type === 'post' ? 'post_id' : 'notice_id';
 
-    const { data } = await supabase.from(table).select('id, body, author_id, created_at')
-      .eq(col, parentId)
-      .lt('created_at', oldestDate)
-      .order('created_at', { ascending: false })
-      .limit(COMMENTS_PER_PAGE);
-    olderItems = ((data || []) as CommentPreview[]).reverse();
+    if (type === 'post') {
+      const { data } = await supabase.from('comments').select('id, body, author_id, created_at')
+        .eq('post_id', parentId)
+        .lt('created_at', oldestDate)
+        .order('created_at', { ascending: false })
+        .limit(COMMENTS_PER_PAGE);
+      olderItems = ((data || []) as CommentPreview[]).reverse();
+    } else {
+      const { data } = await supabase.from('notice_comments').select('id, body, author_id, created_at')
+        .eq('notice_id', parentId)
+        .lt('created_at', oldestDate)
+        .order('created_at', { ascending: false })
+        .limit(COMMENTS_PER_PAGE);
+      olderItems = ((data || []) as CommentPreview[]).reverse();
+    }
 
     if (olderItems.length > 0) {
       setComments((prev) => [...olderItems, ...prev]);

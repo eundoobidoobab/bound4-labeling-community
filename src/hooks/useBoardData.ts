@@ -121,7 +121,7 @@ export function useBoardData(boardId: string | undefined) {
 
           const [{ data: atts }, commentsBundle] = await Promise.all([
             supabase.from('notice_attachments').select('*').in('notice_id', ids),
-            fetchCommentsBundle('notice_comments', 'notice_id', ids),
+            fetchNoticeComments(ids),
           ]);
 
           const allPaths: string[] = [];
@@ -149,7 +149,7 @@ export function useBoardData(boardId: string | undefined) {
 
           const [{ data: atts }, commentsBundle] = await Promise.all([
             supabase.from('post_attachments').select('*').in('post_id', ids),
-            fetchCommentsBundle('comments', 'post_id', ids),
+            fetchPostComments(ids),
           ]);
 
           const allPaths: string[] = [];
