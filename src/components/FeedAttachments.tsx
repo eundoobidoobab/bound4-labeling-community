@@ -116,11 +116,20 @@ function ImageLightbox({
   );
 }
 
-export default function FeedAttachments({ attachments }: { attachments: Attachment[] }) {
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+export default function FeedAttachments({
+  attachments,
+  signedUrls,
+}: {
+  attachments: Attachment[];
+  /** Pre-fetched signed URL map keyed by file_path. If omitted, falls back to per-component fetch. */
+  signedUrls?: Record<string, string>;
+}) {
+  const [localUrls, setLocalUrls] = useState<Record<string, string>>({});
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // Only fetch ourselves if parent didn't supply a map (back-compat)
   useEffect(() => {
+    if (signedUrls) return;
     if (!attachments || attachments.length === 0) return;
     let cancelled = false;
 
@@ -132,20 +141,24 @@ export default function FeedAttachments({ attachments }: { attachments: Attachme
           if (url) urls[a.id] = url;
         })
       );
-      if (!cancelled) setSignedUrls(urls);
+      if (!cancelled) setLocalUrls(urls);
     }
 
     fetchUrls();
     return () => { cancelled = true; };
-  }, [attachments]);
+  }, [attachments, signedUrls]);
 
   if (!attachments || attachments.length === 0) return null;
+
+  // Resolve URL: prefer parent-supplied (by file_path), fallback to local (by id)
+  const resolveUrl = (a: Attachment) =>
+    signedUrls?.[a.file_path] ?? localUrls[a.id] ?? '';
 
   const images = attachments.filter((a) => a.mime_type?.startsWith('image/'));
   const files = attachments.filter((a) => !a.mime_type?.startsWith('image/'));
 
   const lightboxImages = images
-    .map((img) => ({ url: signedUrls[img.id], name: img.file_name }))
+    .map((img) => ({ url: resolveUrl(img), name: img.file_name }))
     .filter((i) => !!i.url);
 
   return (
@@ -153,7 +166,7 @@ export default function FeedAttachments({ attachments }: { attachments: Attachme
       {images.length > 0 && (
         <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {images.map((img, i) => {
-            const url = signedUrls[img.id];
+            const url = resolveUrl(img);
             if (!url) return null;
             return (
               <button
@@ -171,7 +184,7 @@ export default function FeedAttachments({ attachments }: { attachments: Attachme
       {files.length > 0 && (
         <div className="space-y-1">
           {files.map((file) => {
-            const url = signedUrls[file.id];
+            const url = resolveUrl(file);
             if (!url) return null;
             return (
               <a

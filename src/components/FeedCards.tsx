@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,8 @@ import { formatDateTime } from '@/lib/formatDate';
 import EditableContent from '@/components/EditableContent';
 import FeedAttachments from '@/components/FeedAttachments';
 import FeedComments from '@/components/FeedComments';
-import { supabase } from '@/integrations/supabase/client';
 import type { Notice, Post, Attachment, Profile } from '@/types';
+import type { CommentsBundle } from '@/hooks/useBoardData';
 
 const TITLE_MAX = 80;
 const BODY_MAX_LINES = 8;
@@ -56,6 +56,9 @@ interface NoticeCardProps {
   notice: Notice;
   author: Profile | undefined;
   attachments: Attachment[];
+  signedUrls?: Record<string, string>;
+  commentsInitial?: CommentsBundle;
+  onCommentsChanged?: () => void;
   isAdmin: boolean;
   isEditing: boolean;
   onEdit: () => void;
@@ -67,8 +70,8 @@ interface NoticeCardProps {
 }
 
 export function NoticeCard({
-  notice, author, attachments, isAdmin,
-  isEditing, onEdit, onCancelEdit, onSave,
+  notice, author, attachments, signedUrls, commentsInitial, onCommentsChanged,
+  isAdmin, isEditing, onEdit, onCancelEdit, onSave,
   onDelete, onTogglePin, onViewReads,
 }: NoticeCardProps) {
   return (
@@ -136,8 +139,8 @@ export function NoticeCard({
         ) : (
           <>
             <CollapsibleBody text={notice.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="notice" parentId={notice.id} />
+            <FeedAttachments attachments={attachments} signedUrls={signedUrls} />
+            <FeedComments type="notice" parentId={notice.id} initial={commentsInitial} onChanged={onCommentsChanged} />
           </>
         )}
       </CardContent>
@@ -149,6 +152,10 @@ interface PostCardProps {
   post: Post;
   author: Profile | undefined;
   attachments: Attachment[];
+  signedUrls?: Record<string, string>;
+  captureUrl?: string;
+  commentsInitial?: CommentsBundle;
+  onCommentsChanged?: () => void;
   canManage: boolean;
   isEditing: boolean;
   isBugBoard?: boolean;
@@ -159,17 +166,10 @@ interface PostCardProps {
 }
 
 export function PostCard({
-  post, author, attachments, canManage, isBugBoard,
+  post, author, attachments, signedUrls, captureUrl, commentsInitial, onCommentsChanged,
+  canManage, isBugBoard,
   isEditing, onEdit, onCancelEdit, onSave, onDelete,
 }: PostCardProps) {
-  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!post.capture_image_path) return;
-    supabase.storage.from('board_attachments').createSignedUrl(post.capture_image_path, 3600)
-      .then(({ data }) => { if (data?.signedUrl) setCaptureUrl(data.signedUrl); });
-  }, [post.capture_image_path]);
-
   const hasBugFields = isBugBoard && (post.data_no || post.worker_ref || post.capture_image_path);
 
   return (
@@ -243,8 +243,8 @@ export function PostCard({
               </div>
             )}
             <CollapsibleBody text={post.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="post" parentId={post.id} />
+            <FeedAttachments attachments={attachments} signedUrls={signedUrls} />
+            <FeedComments type="post" parentId={post.id} initial={commentsInitial} onChanged={onCommentsChanged} />
           </>
         )}
       </CardContent>
