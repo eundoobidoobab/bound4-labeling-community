@@ -43,24 +43,33 @@ async function batchSignedUrls(paths: string[]): Promise<Record<string, string>>
   return map;
 }
 
-async function fetchCommentsBundle(
-  table: 'comments' | 'notice_comments',
-  parentColumn: 'post_id' | 'notice_id',
+async function fetchPostComments(parentIds: string[]): Promise<Record<string, CommentsBundle>> {
+  return fetchCommentsGeneric(parentIds, async (ids) =>
+    (await supabase.from('comments').select('id, body, author_id, created_at, post_id')
+      .in('post_id', ids).order('created_at', { ascending: false })).data || [],
+    'post_id',
+  );
+}
+
+async function fetchNoticeComments(parentIds: string[]): Promise<Record<string, CommentsBundle>> {
+  return fetchCommentsGeneric(parentIds, async (ids) =>
+    (await supabase.from('notice_comments').select('id, body, author_id, created_at, notice_id')
+      .in('notice_id', ids).order('created_at', { ascending: false })).data || [],
+    'notice_id',
+  );
+}
+
+async function fetchCommentsGeneric(
   parentIds: string[],
+  loader: (ids: string[]) => Promise<any[]>,
+  parentColumn: string,
 ): Promise<Record<string, CommentsBundle>> {
   const result: Record<string, CommentsBundle> = {};
   parentIds.forEach((id) => { result[id] = { total: 0, preview: [] }; });
   if (parentIds.length === 0) return result;
 
-  // Fetch all comments for these parents (latest 50 per parent is overkill; limit by total)
-  // Strategy: pull all rows for these IDs, then group + cap preview client-side.
-  const { data } = await supabase
-    .from(table)
-    .select(`id, body, author_id, created_at, ${parentColumn}`)
-    .in(parentColumn, parentIds)
-    .order('created_at', { ascending: false });
-
-  (data || []).forEach((row: any) => {
+  const rows = await loader(parentIds);
+  rows.forEach((row: any) => {
     const pid = row[parentColumn];
     const bundle = result[pid];
     if (!bundle) return;
