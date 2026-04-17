@@ -43,10 +43,10 @@ function CollapsibleBody({ text }: { text: string }) {
 function TruncatedTitle({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   if (text.length <= TITLE_MAX) {
-    return <CardTitle className="text-base mt-1 break-words">{text}</CardTitle>;
+    return <CardTitle className="text-base font-semibold mt-1 break-words leading-snug">{text}</CardTitle>;
   }
   return (
-    <CardTitle className="text-base mt-1 break-words cursor-pointer" onClick={() => setExpanded(!expanded)}>
+    <CardTitle className="text-base font-semibold mt-1 break-words leading-snug cursor-pointer" onClick={() => setExpanded(!expanded)}>
       {expanded ? text : text.slice(0, TITLE_MAX) + '...'}
     </CardTitle>
   );
