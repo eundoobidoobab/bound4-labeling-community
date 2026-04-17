@@ -20,19 +20,19 @@ function CollapsibleBody({ text }: { text: string }) {
   const needsTruncate = lines.length > BODY_MAX_LINES || text.length > 500;
 
   if (!needsTruncate) {
-    return <p className="text-sm text-foreground whitespace-pre-wrap break-words">{text}</p>;
+    return <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">{text}</p>;
   }
 
   const preview = expanded ? text : lines.slice(0, BODY_MAX_LINES).join('\n').slice(0, 500);
 
   return (
     <div>
-      <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+      <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
         {preview}{!expanded && '...'}
       </p>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1 transition-colors"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
       >
         {expanded ? <><ChevronUp className="h-3.5 w-3.5" /> 접기</> : <><ChevronDown className="h-3.5 w-3.5" /> 더보기</>}
       </button>
@@ -73,7 +73,7 @@ export function NoticeCard({
 }: NoticeCardProps) {
   return (
     <Card className={notice.is_pinned ? 'border-primary/30 bg-primary/5' : ''}>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <Avatar className="h-9 w-9 shrink-0 mt-0.5">
@@ -125,7 +125,7 @@ export function NoticeCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pl-16">
+      <CardContent className="pl-[60px]">
         {isEditing ? (
           <EditableContent
             title={notice.title}
@@ -174,7 +174,7 @@ export function PostCard({
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <Avatar className="h-9 w-9 shrink-0 mt-0.5">
@@ -209,7 +209,7 @@ export function PostCard({
           )}
         </div>
       </CardHeader>
-      <CardContent className="pl-16">
+      <CardContent className="pl-[60px]">
         {isEditing ? (
           <EditableContent
             title={post.title}
