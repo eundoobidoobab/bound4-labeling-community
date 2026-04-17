@@ -35,6 +35,10 @@ export default function BoardPage() {
   const posts = data?.posts ?? [];
   const noticeAttachments = data?.noticeAttachments ?? {};
   const postAttachments = data?.postAttachments ?? {};
+  const signedUrls = data?.signedUrls ?? {};
+  const captureUrls = data?.captureUrls ?? {};
+  const noticeComments = data?.noticeComments ?? {};
+  const postComments = data?.postComments ?? {};
 
   useEffect(() => {
     if (data?.authorIds && data.authorIds.length > 0) fetchProfiles(data.authorIds);
@@ -179,6 +183,9 @@ export default function BoardPage() {
                 notice={notice}
                 author={profiles[notice.created_by]}
                 attachments={noticeAttachments[notice.id] || []}
+                signedUrls={signedUrls}
+                commentsInitial={noticeComments[notice.id]}
+                onCommentsChanged={invalidateBoard}
                 isAdmin={role === 'admin'}
                 isEditing={editingId === notice.id}
                 onEdit={() => setEditingId(notice.id)}
@@ -221,6 +228,10 @@ export default function BoardPage() {
                 post={post}
                 author={profiles[post.author_id]}
                 attachments={postAttachments[post.id] || []}
+                signedUrls={signedUrls}
+                captureUrl={captureUrls[post.id]}
+                commentsInitial={postComments[post.id]}
+                onCommentsChanged={invalidateBoard}
                 canManage={post.author_id === user?.id || role === 'admin'}
                 isBugBoard={isBug}
                 isEditing={editingId === post.id}
