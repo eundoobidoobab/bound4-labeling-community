@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Pin, MoreHorizontal, Trash2, Pencil, Eye, ChevronDown, ChevronUp, Database, User } from 'lucide-react';
@@ -73,28 +73,27 @@ export function NoticeCard({
 }: NoticeCardProps) {
   return (
     <Card className={notice.is_pinned ? 'border-primary/30 bg-primary/5' : ''}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
-                {notice.is_pinned && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-                    <Pin className="h-3 w-3" /> 고정
-                  </span>
-                )}
-              </div>
-              <TruncatedTitle text={notice.title} />
+      <div className="grid grid-cols-[36px_1fr] gap-x-3 p-6">
+        {/* Row 1: Avatar + Header */}
+        <Avatar className="h-9 w-9 mt-0.5 row-start-1 col-start-1">
+          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+            {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="row-start-1 col-start-2 min-w-0 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(notice.created_at)}</span>
+              {notice.is_pinned && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                  <Pin className="h-3 w-3" /> 고정
+                </span>
+              )}
             </div>
+            <TruncatedTitle text={notice.title} />
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 -mr-2">
             {isAdmin && onViewReads && (
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onViewReads}>
                 <Eye className="h-3.5 w-3.5" />
@@ -124,23 +123,24 @@ export function NoticeCard({
             )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="pl-[72px]">
-        {isEditing ? (
-          <EditableContent
-            title={notice.title}
-            body={notice.body}
-            onSave={onSave}
-            onCancel={onCancelEdit}
-          />
-        ) : (
-          <>
-            <CollapsibleBody text={notice.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="notice" parentId={notice.id} />
-          </>
-        )}
-      </CardContent>
+        {/* Row 2: Body aligned with header content column */}
+        <div className="row-start-2 col-start-2 min-w-0 mt-3">
+          {isEditing ? (
+            <EditableContent
+              title={notice.title}
+              body={notice.body}
+              onSave={onSave}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <>
+              <CollapsibleBody text={notice.body} />
+              <FeedAttachments attachments={attachments} />
+              <FeedComments type="notice" parentId={notice.id} />
+            </>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -174,26 +174,25 @@ export function PostCard({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
-                <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
-              </div>
-              <TruncatedTitle text={post.title} />
+      <div className="grid grid-cols-[36px_1fr] gap-x-3 p-6">
+        {/* Row 1: Avatar + Header */}
+        <Avatar className="h-9 w-9 mt-0.5 row-start-1 col-start-1">
+          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+            {(author?.display_name || author?.email || '?').charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="row-start-1 col-start-2 min-w-0 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-foreground">{author?.display_name || author?.email || '알 수 없음'}</span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
             </div>
+            <TruncatedTitle text={post.title} />
           </div>
           {canManage && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 -mr-2">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -208,46 +207,47 @@ export function PostCard({
             </DropdownMenu>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="pl-[72px]">
-        {isEditing ? (
-          <EditableContent
-            title={post.title}
-            body={post.body}
-            onSave={onSave}
-            onCancel={onCancelEdit}
-          />
-        ) : (
-          <>
-            {hasBugFields && (
-              <div className="flex flex-wrap gap-3 mb-3">
-                {post.data_no && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
-                    <Database className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">데이터No.</span>
-                    <span className="font-medium text-foreground">{post.data_no}</span>
-                  </span>
-                )}
-                {post.worker_ref && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
-                    <User className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">작업자ID</span>
-                    <span className="font-medium text-foreground">{post.worker_ref}</span>
-                  </span>
-                )}
-              </div>
-            )}
-            {captureUrl && (
-              <div className="mb-3">
-                <img src={captureUrl} alt="캡처 이미지" className="rounded-lg border border-border max-h-64 object-contain" />
-              </div>
-            )}
-            <CollapsibleBody text={post.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="post" parentId={post.id} />
-          </>
-        )}
-      </CardContent>
+        {/* Row 2: Body aligned with header content column */}
+        <div className="row-start-2 col-start-2 min-w-0 mt-3">
+          {isEditing ? (
+            <EditableContent
+              title={post.title}
+              body={post.body}
+              onSave={onSave}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <>
+              {hasBugFields && (
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {post.data_no && (
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                      <Database className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">데이터No.</span>
+                      <span className="font-medium text-foreground">{post.data_no}</span>
+                    </span>
+                  )}
+                  {post.worker_ref && (
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-md">
+                      <User className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">작업자ID</span>
+                      <span className="font-medium text-foreground">{post.worker_ref}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+              {captureUrl && (
+                <div className="mb-3">
+                  <img src={captureUrl} alt="캡처 이미지" className="rounded-lg border border-border max-h-64 object-contain" />
+                </div>
+              )}
+              <CollapsibleBody text={post.body} />
+              <FeedAttachments attachments={attachments} />
+              <FeedComments type="post" parentId={post.id} />
+            </>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
