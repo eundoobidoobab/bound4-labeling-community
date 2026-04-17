@@ -158,7 +158,7 @@ export default function FeedAttachments({
   const files = attachments.filter((a) => !a.mime_type?.startsWith('image/'));
 
   const lightboxImages = images
-    .map((img) => ({ url: signedUrls[img.id], name: img.file_name }))
+    .map((img) => ({ url: resolveUrl(img), name: img.file_name }))
     .filter((i) => !!i.url);
 
   return (
@@ -166,7 +166,7 @@ export default function FeedAttachments({
       {images.length > 0 && (
         <div className={`grid gap-2 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {images.map((img, i) => {
-            const url = signedUrls[img.id];
+            const url = resolveUrl(img);
             if (!url) return null;
             return (
               <button
@@ -184,7 +184,7 @@ export default function FeedAttachments({
       {files.length > 0 && (
         <div className="space-y-1">
           {files.map((file) => {
-            const url = signedUrls[file.id];
+            const url = resolveUrl(file);
             if (!url) return null;
             return (
               <a
