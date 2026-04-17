@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
-
+import { useProfiles } from '@/hooks/useProfiles';
 import { formatDateTime } from '@/lib/formatDate';
+import type { CommentsBundle, CommentPreview } from '@/hooks/useBoardData';
 
 const COMMENT_BODY_MAX = 200;
 const COMMENTS_PER_PAGE = 10;
@@ -38,81 +39,57 @@ function CollapsibleComment({ text }: { text: string }) {
   );
 }
 
-interface Comment {
-  id: string;
-  body: string;
-  author_id: string;
-  created_at: string;
-}
-
-interface Profile {
-  id: string;
-  display_name: string | null;
-  email: string;
-}
-
 interface FeedCommentsProps {
   type: 'post' | 'notice';
   parentId: string;
+  /** Initial bundle prefetched by the parent board query */
+  initial?: CommentsBundle;
+  /** Notify parent after mutation so it can refetch the board query */
+  onChanged?: () => void;
 }
 
-export default function FeedComments({ type, parentId }: FeedCommentsProps) {
+export default function FeedComments({ type, parentId, initial, onChanged }: FeedCommentsProps) {
   const { user, role } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [showAll, setShowAll] = useState(false);
+  const { profiles, fetchProfiles } = useProfiles();
+  const [comments, setComments] = useState<CommentPreview[]>(initial?.preview ?? []);
+  const [totalCount, setTotalCount] = useState(initial?.total ?? 0);
+  const [showAll, setShowAll] = useState((initial?.total ?? 0) <= PREVIEW_COUNT);
   const [loadingMore, setLoadingMore] = useState(false);
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Sync when parent bundle changes (board refetch)
   useEffect(() => {
-    fetchInitialComments();
-  }, [parentId, type]);
+    setComments(initial?.preview ?? []);
+    setTotalCount(initial?.total ?? 0);
+    setShowAll((initial?.total ?? 0) <= PREVIEW_COUNT);
+  }, [initial]);
 
-  const fetchInitialComments = async () => {
-    let total = 0;
-    let items: Comment[] = [];
-
-    if (type === 'post') {
-      const { count } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', parentId);
-      total = count ?? 0;
-      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId)
-        .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
-      items = ((data || []) as Comment[]).reverse();
-    } else {
-      const { count } = await supabase.from('notice_comments').select('*', { count: 'exact', head: true }).eq('notice_id', parentId);
-      total = count ?? 0;
-      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId)
-        .order('created_at', { ascending: false }).limit(PREVIEW_COUNT);
-      items = ((data || []) as Comment[]).reverse();
-    }
-
-    setTotalCount(total);
-    setComments(items);
-    setShowAll(total <= PREVIEW_COUNT);
-
-    await fetchProfilesFor(items);
-  };
+  // Fetch author + current user profiles (cached centrally via useProfiles)
+  useEffect(() => {
+    const ids = new Set<string>();
+    comments.forEach((c) => ids.add(c.author_id));
+    if (user) ids.add(user.id);
+    if (ids.size > 0) fetchProfiles([...ids]);
+  }, [comments, user]);
 
   const loadOlderComments = async () => {
     if (comments.length === 0) return;
     setLoadingMore(true);
     const oldestDate = comments[0].created_at;
-    let olderItems: Comment[] = [];
+    let olderItems: CommentPreview[] = [];
+    const table = type === 'post' ? 'comments' : 'notice_comments';
+    const col = type === 'post' ? 'post_id' : 'notice_id';
 
-    if (type === 'post') {
-      const { data } = await supabase.from('comments').select('*').eq('post_id', parentId)
-        .lt('created_at', oldestDate).order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
-      olderItems = ((data || []) as Comment[]).reverse();
-    } else {
-      const { data } = await supabase.from('notice_comments').select('*').eq('notice_id', parentId)
-        .lt('created_at', oldestDate).order('created_at', { ascending: false }).limit(COMMENTS_PER_PAGE);
-      olderItems = ((data || []) as Comment[]).reverse();
-    }
+    const { data } = await supabase.from(table).select('id, body, author_id, created_at')
+      .eq(col, parentId)
+      .lt('created_at', oldestDate)
+      .order('created_at', { ascending: false })
+      .limit(COMMENTS_PER_PAGE);
+    olderItems = ((data || []) as CommentPreview[]).reverse();
+
     if (olderItems.length > 0) {
-      setComments(prev => [...olderItems, ...prev]);
-      await fetchProfilesFor(olderItems);
+      setComments((prev) => [...olderItems, ...prev]);
     }
     if (olderItems.length < COMMENTS_PER_PAGE) {
       setShowAll(true);
@@ -120,33 +97,29 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     setLoadingMore(false);
   };
 
-  const fetchProfilesFor = async (items: Comment[]) => {
-    const authorIds = [...new Set(items.map(c => c.author_id))];
-    if (user) authorIds.push(user.id);
-    if (authorIds.length > 0) {
-      const { data: profs } = await supabase.from('profiles').select('id, display_name, email').in('id', authorIds);
-      if (profs) {
-        setProfiles(prev => {
-          const next = { ...prev };
-          profs.forEach((p: any) => { next[p.id] = p; });
-          return next;
-        });
-      }
-    }
-  };
-
   const handleSubmit = async () => {
     if (!user || !body.trim()) return;
     setSubmitting(true);
     if (type === 'post') {
-      await supabase.from('comments').insert({ post_id: parentId, author_id: user.id, body: body.trim() });
+      const { data } = await supabase.from('comments')
+        .insert({ post_id: parentId, author_id: user.id, body: body.trim() })
+        .select('id, body, author_id, created_at').single();
+      if (data) {
+        setComments((prev) => [...prev, data as CommentPreview]);
+        setTotalCount((c) => c + 1);
+      }
     } else {
-      await supabase.from('notice_comments').insert({ notice_id: parentId, author_id: user.id, body: body.trim() });
+      const { data } = await supabase.from('notice_comments')
+        .insert({ notice_id: parentId, author_id: user.id, body: body.trim() })
+        .select('id, body, author_id, created_at').single();
+      if (data) {
+        setComments((prev) => [...prev, data as CommentPreview]);
+        setTotalCount((c) => c + 1);
+      }
     }
     setBody('');
     setSubmitting(false);
-    // Re-fetch to get the new comment
-    await fetchInitialComments();
+    onChanged?.();
   };
 
   const handleDelete = async (commentId: string) => {
@@ -155,8 +128,9 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
     } else {
       await supabase.from('notice_comments').delete().eq('id', commentId);
     }
-    setComments(prev => prev.filter(c => c.id !== commentId));
-    setTotalCount(prev => prev - 1);
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setTotalCount((prev) => prev - 1);
+    onChanged?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -167,12 +141,9 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
   };
 
   const hiddenCount = totalCount - comments.length;
+  const canDelete = (c: CommentPreview) => user?.id === c.author_id || role === 'admin';
 
-  const canDelete = (comment: Comment) => {
-    return user?.id === comment.author_id || role === 'admin';
-  };
-
-  const renderComment = (comment: Comment) => {
+  const renderComment = (comment: CommentPreview) => {
     const author = profiles[comment.author_id];
     return (
       <div key={comment.id} className="flex gap-2 group">
@@ -209,7 +180,7 @@ export default function FeedComments({ type, parentId }: FeedCommentsProps) {
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      {hiddenCount > 0 && (
+      {hiddenCount > 0 && !showAll && (
         <button
           onClick={loadOlderComments}
           disabled={loadingMore}
