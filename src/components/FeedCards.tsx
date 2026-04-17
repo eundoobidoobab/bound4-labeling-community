@@ -139,8 +139,8 @@ export function NoticeCard({
         ) : (
           <>
             <CollapsibleBody text={notice.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="notice" parentId={notice.id} />
+            <FeedAttachments attachments={attachments} signedUrls={signedUrls} />
+            <FeedComments type="notice" parentId={notice.id} initial={commentsInitial} onChanged={onCommentsChanged} />
           </>
         )}
       </CardContent>
@@ -152,6 +152,10 @@ interface PostCardProps {
   post: Post;
   author: Profile | undefined;
   attachments: Attachment[];
+  signedUrls?: Record<string, string>;
+  captureUrl?: string;
+  commentsInitial?: CommentsBundle;
+  onCommentsChanged?: () => void;
   canManage: boolean;
   isEditing: boolean;
   isBugBoard?: boolean;
@@ -162,17 +166,10 @@ interface PostCardProps {
 }
 
 export function PostCard({
-  post, author, attachments, canManage, isBugBoard,
+  post, author, attachments, signedUrls, captureUrl, commentsInitial, onCommentsChanged,
+  canManage, isBugBoard,
   isEditing, onEdit, onCancelEdit, onSave, onDelete,
 }: PostCardProps) {
-  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!post.capture_image_path) return;
-    supabase.storage.from('board_attachments').createSignedUrl(post.capture_image_path, 3600)
-      .then(({ data }) => { if (data?.signedUrl) setCaptureUrl(data.signedUrl); });
-  }, [post.capture_image_path]);
-
   const hasBugFields = isBugBoard && (post.data_no || post.worker_ref || post.capture_image_path);
 
   return (
@@ -246,8 +243,8 @@ export function PostCard({
               </div>
             )}
             <CollapsibleBody text={post.body} />
-            <FeedAttachments attachments={attachments} />
-            <FeedComments type="post" parentId={post.id} />
+            <FeedAttachments attachments={attachments} signedUrls={signedUrls} />
+            <FeedComments type="post" parentId={post.id} initial={commentsInitial} onChanged={onCommentsChanged} />
           </>
         )}
       </CardContent>
