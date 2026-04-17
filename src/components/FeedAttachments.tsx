@@ -116,11 +116,20 @@ function ImageLightbox({
   );
 }
 
-export default function FeedAttachments({ attachments }: { attachments: Attachment[] }) {
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+export default function FeedAttachments({
+  attachments,
+  signedUrls,
+}: {
+  attachments: Attachment[];
+  /** Pre-fetched signed URL map keyed by file_path. If omitted, falls back to per-component fetch. */
+  signedUrls?: Record<string, string>;
+}) {
+  const [localUrls, setLocalUrls] = useState<Record<string, string>>({});
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // Only fetch ourselves if parent didn't supply a map (back-compat)
   useEffect(() => {
+    if (signedUrls) return;
     if (!attachments || attachments.length === 0) return;
     let cancelled = false;
 
@@ -132,14 +141,18 @@ export default function FeedAttachments({ attachments }: { attachments: Attachme
           if (url) urls[a.id] = url;
         })
       );
-      if (!cancelled) setSignedUrls(urls);
+      if (!cancelled) setLocalUrls(urls);
     }
 
     fetchUrls();
     return () => { cancelled = true; };
-  }, [attachments]);
+  }, [attachments, signedUrls]);
 
   if (!attachments || attachments.length === 0) return null;
+
+  // Resolve URL: prefer parent-supplied (by file_path), fallback to local (by id)
+  const resolveUrl = (a: Attachment) =>
+    signedUrls?.[a.file_path] ?? localUrls[a.id] ?? '';
 
   const images = attachments.filter((a) => a.mime_type?.startsWith('image/'));
   const files = attachments.filter((a) => !a.mime_type?.startsWith('image/'));
