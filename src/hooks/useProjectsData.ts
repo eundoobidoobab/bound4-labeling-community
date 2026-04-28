@@ -49,7 +49,7 @@ export function useProjectsData(userId: string | undefined, role: string | null)
       }
 
       // Fetch invitations
-      const { data: profileData } = await supabase.from('profiles').select('email').eq('id', userId!).single();
+      const { data: profileData } = await supabase.from('profiles').select('email').eq('id', userId!).maybeSingle();
       const userEmail = profileData?.email?.toLowerCase();
 
       let invitations: Invitation[] = [];
