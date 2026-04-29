@@ -32,8 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -42,19 +44,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
         }
         setLoading(false);
+
+        // 토큰 갱신 실패 감지 → 강제 로그아웃 + 안내
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          try {
+            const { toast } = await import('sonner');
+            toast.error('세션이 만료되었습니다. 다시 로그인해주세요.');
+          } catch {}
+          await supabase.auth.signOut();
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-      setLoading(false);
-    });
+    // 5초 안전장치: getSession()이 멈춰도 로딩은 풀림
+    timeoutId = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) {
+          console.warn('[Auth] getSession timeout - 인증 서버 응답 지연');
+        }
+        return false;
+      });
+    }, 5000);
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchRole(session.user.id);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        console.error('[Auth] getSession failed:', err);
+        setLoading(false);
+      });
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
