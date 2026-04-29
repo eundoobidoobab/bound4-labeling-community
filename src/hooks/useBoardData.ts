@@ -90,19 +90,19 @@ async function fetchCommentsGeneric(
 }
 
 export function useBoardData(boardId: string | undefined) {
+  const qc = useQueryClient();
   const query = useInfiniteQuery<BoardPage, Error>({
     queryKey: ['board', boardId],
     queryFn: async ({ pageParam = 0 }) => {
       const offset = pageParam as number;
-      // board 메타는 첫 페이지(offset=0)에서만 조회 — 추가 페이지에서는 생략
+      // board 메타는 첫 페이지에서만 조회. 이후 페이지는 캐시에서 재사용.
       let board: Board | null = null;
       if (offset === 0) {
         const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
         board = boardData as Board | null;
       } else {
-        // 캐시에서 board type 추론을 위해 첫 페이지 데이터 사용
-        const cached = (query as any)?.data?.pages?.[0];
-        board = cached?.board ?? null;
+        const cached = qc.getQueryData<InfiniteData<BoardPage>>(['board', boardId]);
+        board = cached?.pages?.[0]?.board ?? null;
         if (!board) {
           const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
           board = boardData as Board | null;
