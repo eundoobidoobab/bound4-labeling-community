@@ -26,19 +26,23 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
-        // 권한/인증 에러는 재시도하지 않음
         if (error instanceof Error) {
           const msg = error.message.toLowerCase();
+          // 권한/인증 에러는 재시도 금지
           if (msg.includes('permission denied') || msg.includes('jwt expired') || msg.includes('invalid login')) {
             return false;
           }
+          // 타임아웃/게이트웨이 장애는 1회만 재시도 (서버 부하 가중 방지)
+          if (msg.includes('timeout') || msg.includes('504') || msg.includes('503') || msg.includes('failed to fetch')) {
+            return failureCount < 1;
+          }
         }
-        return failureCount < 3;
+        return failureCount < 2;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000),
       staleTime: 1000 * 60, // 1분
-      refetchOnWindowFocus: true,
-      networkMode: 'online', // 오프라인 시 자동 일시정지, 복구 시 재시도
+      refetchOnWindowFocus: false, // 장애 시 포커스마다 재요청 금지
+      networkMode: 'online',
     },
     mutations: {
       retry: 1,
