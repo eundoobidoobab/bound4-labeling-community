@@ -1,0 +1,25 @@
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, app_role) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.is_project_admin(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.is_active_member(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.has_project_access(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.can_read_profile(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.search_profiles_for_invite(text, integer) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_my_pending_invitations() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_invitation_project_names(uuid[]) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.accept_invitation(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.change_user_role(uuid, app_role, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.delete_project_permanently(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.send_project_notifications(uuid[], notification_type, text, text, uuid, text) FROM anon, public;
+
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_project_admin(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_active_member(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_project_access(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_read_profile(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_profiles_for_invite(text, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_pending_invitations() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_invitation_project_names(uuid[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_invitation(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.change_user_role(uuid, app_role, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_project_permanently(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.send_project_notifications(uuid[], notification_type, text, text, uuid, text) TO authenticated;
