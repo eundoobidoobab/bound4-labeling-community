@@ -18,6 +18,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useBoardData } from '@/hooks/useBoardData';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Board, Project } from '@/types';
+import { BoardFeedSkeleton } from '@/components/skeletons/CardSkeletons';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ id: string; boardId: string }>();
@@ -109,8 +110,8 @@ export default function BoardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-6 max-w-3xl mx-auto">
+        <BoardFeedSkeleton count={4} />
       </div>
     );
   }

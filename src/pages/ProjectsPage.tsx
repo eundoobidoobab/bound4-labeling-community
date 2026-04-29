@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { FolderOpen, Loader2, Archive } from 'lucide-react';
+import { FolderOpen, Archive } from 'lucide-react';
+import { ProjectsGridSkeleton } from '@/components/skeletons/CardSkeletons';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProjectsData } from '@/hooks/useProjectsData';
@@ -194,7 +195,7 @@ export default function ProjectsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          <ProjectsGridSkeleton count={6} />
         ) : (
           <>
             {activeProjects.length === 0 && archivedProjects.length === 0 ? (

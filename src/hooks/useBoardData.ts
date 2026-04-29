@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Board, Notice, Post, Attachment } from '@/types';
 
@@ -90,12 +90,24 @@ async function fetchCommentsGeneric(
 }
 
 export function useBoardData(boardId: string | undefined) {
+  const qc = useQueryClient();
   const query = useInfiniteQuery<BoardPage, Error>({
     queryKey: ['board', boardId],
     queryFn: async ({ pageParam = 0 }) => {
       const offset = pageParam as number;
-      const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
-      const board = boardData as Board | null;
+      // board 메타는 첫 페이지에서만 조회. 이후 페이지는 캐시에서 재사용.
+      let board: Board | null = null;
+      if (offset === 0) {
+        const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
+        board = boardData as Board | null;
+      } else {
+        const cached = qc.getQueryData<InfiniteData<BoardPage>>(['board', boardId]);
+        board = cached?.pages?.[0]?.board ?? null;
+        if (!board) {
+          const { data: boardData } = await supabase.from('boards').select('*').eq('id', boardId!).single();
+          board = boardData as Board | null;
+        }
+      }
 
       let notices: Notice[] = [];
       let posts: Post[] = [];
