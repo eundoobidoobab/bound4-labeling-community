@@ -170,7 +170,6 @@ export default function LoginPage() {
         <ForgotPasswordForm
           email={email}
           isLoading={isLoading}
-          cooldownSeconds={cooldownSeconds}
           onEmailChange={setEmail}
           onSubmit={handleForgotPassword}
           onBack={() => { setMode('login'); setEmail(''); }}
@@ -201,6 +200,7 @@ export default function LoginPage() {
           confirmPassword={confirmPassword}
           displayName={displayName}
           isLoading={isLoading}
+          cooldownSeconds={cooldownSeconds}
           onEmailChange={setEmail}
           onPasswordChange={setPassword}
           onConfirmPasswordChange={setConfirmPassword}
