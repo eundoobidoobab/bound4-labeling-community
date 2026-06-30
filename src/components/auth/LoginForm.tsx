@@ -8,6 +8,7 @@ interface LoginFormProps {
   email: string;
   password: string;
   isLoading: boolean;
+  cooldownSeconds: number;
   onEmailChange: (v: string) => void;
   onPasswordChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -16,7 +17,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({
-  email, password, isLoading,
+  email, password, isLoading, cooldownSeconds,
   onEmailChange, onPasswordChange, onSubmit,
   onForgotPassword, onSwitchToSignUp,
 }: LoginFormProps) {
@@ -51,9 +52,9 @@ export default function LoginForm({
               autoComplete="current-password"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || cooldownSeconds > 0}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-            로그인
+            {cooldownSeconds > 0 ? `${cooldownSeconds}초 후 다시 시도` : '로그인'}
           </Button>
         </form>
         <div className="mt-4 space-y-2 text-center">
